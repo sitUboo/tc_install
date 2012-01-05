@@ -181,10 +181,10 @@ function RunScript {
 
 function Install-SyncDtsPackage {
 
-    $sub1Path = (Resolve-Path "$package\content\SSIS Packages\SyncDboPortal\SyncDboPortal_Sub_1.dtsx")
-	$sub2Path = (Resolve-Path "$package\content\SSIS Packages\SyncDboPortal\SyncDboPortal_Sub_2.dtsx")
-	$packagePath = (Resolve-Path "$package\content\SSIS Packages\SyncDboPortal\SyncDboPortal.dtsx")
-    $packageConfigPath = (Resolve-Path "$package\content\SSIS Packages\SyncDboPortal\SyncDboPortal_Config.dtsConfig")
+    $sub1Path = (Resolve-Path "$package\content\SSIS\SyncDboPortal\SyncDboPortal_Sub_1.dtsx")
+    $sub2Path = (Resolve-Path "$package\content\SSIS\SyncDboPortal\SyncDboPortal_Sub_2.dtsx")
+    $packagePath = (Resolve-Path "$package\content\SSIS\SyncDboPortal\SyncDboPortal.dtsx")
+    $packageConfigPath = (Resolve-Path "$package\content\SSIS\SyncDboPortal\SyncDboPortal_Config.dtsConfig")
     
     $xml = [xml](get-content $packageConfigPath)
 
@@ -207,8 +207,8 @@ function Install-SyncDtsPackage {
 
 function Install-EtlFItoStageDtsPackage {
 
-    $packagePath = (Resolve-Path "$package\content\SSIS Packages\ETL\ETL_MoveTrxnFromFIToStage.dtsx")
-    $packageConfigPath = (Resolve-Path "$package\content\SSIS Packages\ETL\ETL_MoveTrxnFromFIToStage_Config.dtsConfig")
+    $packagePath = (Resolve-Path "$package\content\SSIS\ETL\ETL_MoveTrxnFromFIToStage.dtsx")
+    $packageConfigPath = (Resolve-Path "$package\content\SSIS\ETL\ETL_MoveTrxnFromFIToStage_Config.dtsConfig")
     
     $xml = [xml](get-content $packageConfigPath)
 
@@ -225,8 +225,8 @@ function Install-EtlFItoStageDtsPackage {
 
 function Install-EtlStagetoDboDtsPackage {
 
-    $packagePath = (Resolve-Path "$package\content\SSIS Packages\ETL\ETL_MoveTrxnFromStageToDbo.dtsx")
-    $packageConfigPath = (Resolve-Path "$package\content\SSIS Packages\ETL\ETL_MoveTrxnFromStageToDbo_Config.dtsConfig")
+    $packagePath = (Resolve-Path "$package\content\SSIS\ETL\ETL_MoveTrxnFromStageToDbo.dtsx")
+    $packageConfigPath = (Resolve-Path "$package\content\SSIS\ETL\ETL_MoveTrxnFromStageToDbo_Config.dtsConfig")
     
     $xml = [xml](get-content $packageConfigPath)
 
@@ -268,7 +268,7 @@ $DatabaseServer = $hash['portal.db.instance']
 $Database = $hash['portal.db']
 $user = $hash['ops.db.username']
 $pass = $hash['ops.db.password']
-$output = Invoke-Expression "$package\tools\SqlCompare\SQLCompare.exe /Scripts1:""$package\content"" /server2:$DatabaseServer /db2:$Database /username2:$user /password2:$pass /sync /Include:identical /Force /Verbose /ScriptFile:$package\SchemaSyncScript.sql"
+$output = Invoke-Expression "$package\tools\SqlCompare\SQLCompare.exe /Scripts1:""$package\DB\content"" /server2:$DatabaseServer /db2:$Database /username2:$user /password2:$pass /sync /Include:identical /Force /Verbose /ScriptFile:$package\SchemaSyncScript.sql"
 Write-Output $output
 
 #import
@@ -277,7 +277,7 @@ $DatabaseServer = $hash['import.db.instance']
 $Database = $hash['import.db']
 $user = $hash['ops.db.username']
 $pass = $hash['ops.db.password']
-$output = Invoke-Expression "$package\tools\SqlCompare\SQLCompare.exe /Scripts1:""$package\content"" /server2:$DatabaseServer /db2:$Database /username2:$user /password2:$pass /sync /Include:identical /Force /Verbose /ScriptFile:$package\SchemaSyncScript.sql"
+$output = Invoke-Expression "$package\tools\SqlCompare\SQLCompare.exe /Scripts1:""$package\DB\content"" /server2:$DatabaseServer /db2:$Database /username2:$user /password2:$pass /sync /Include:identical /Force /Verbose /ScriptFile:$package\SchemaSyncScript.sql"
 Write-Output $output
 
 #batch
@@ -291,7 +291,7 @@ if(-not( Test-Path "$package\content\SSIS Packages")) {
   rename-item "$package\content\SSIS%20Packages" "SSIS Packages"
   rename-item "$package\content\Stored%20Procedures" "Stored Procedures"
 }
-Invoke-Expression "$package\tools\SqlCompare\SQLCompare.exe /ignoreParserErrors /Options:Default,IgnoreComments /Scripts1:""$package\content"" /server2:$DatabaseServer /db2:$Database /username2:$user /password2:$pass /Include:identical /Force /ScriptFile:$package\SchemaSyncScript-Batch.sql"
+Invoke-Expression "$package\tools\SqlCompare\SQLCompare.exe /ignoreParserErrors /Options:Default,IgnoreComments /Scripts1:""$package\DB\content"" /server2:$DatabaseServer /db2:$Database /username2:$user /password2:$pass /Include:identical /Force /ScriptFile:$package\SchemaSyncScript-Batch.sql"
 Get-Content "$package\SchemaSyncScript-Batch.sql" | ForEach-Object { $_ -replace "SET TRANSACTION ISOLATION LEVEL SERIALIZABLE", "SET TRANSACTION ISOLATION LEVEL READ COMMITTED" } | Set-Content "$package\SchemaSyncScript-Batch-mod.sql"
 
 # execute change set

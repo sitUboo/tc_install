@@ -172,7 +172,7 @@ $buildNum = getBuildNum $btnum $hash['pinned']
 $buildId = getBuildId $btnum $hash['pinned']
 #OPS is not doing multiple build configurations yet
 #$mode = $hash['release.mode']
-$packageAddress = "http://vmteambuildserver/repository/download/$btnum/$buildId"+":id/$package.{build.number}.zip?guest=1";
+$packageAddress = "http://vmteambuildserver/repository/download/$btnum/$buildId"+":id/$project.{build.number}.zip?guest=1";
 $current_path = resolve-path "."
 $packageRoot = "$current_path\$package"
 (new-object net.webclient).DownloadFile($packageAddress,"$current_path\$package.$buildNum.zip")
