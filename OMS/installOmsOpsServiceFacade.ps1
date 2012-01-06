@@ -150,7 +150,7 @@ function UnInstall() {
         Remove-WebSite -Name $obj.name
         Write-Host "Removing Site Files"
         if(Test-Path ($obj.physicalPath)){
-            Remove-Item $obj.physicalPath -recurse -force -exclude *.svclog
+            Remove-Item $obj.physicalPath -recurse -force -exclude ClingTrace.svclog
         }
     }
 }

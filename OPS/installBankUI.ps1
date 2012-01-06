@@ -136,6 +136,8 @@ $current_path = resolve-path "."
 $packageRoot = "$current_path\"+$hash['ops.site.name']
 (new-object net.webclient).DownloadFile($packageAddress,"$current_path\$package.$buildNum.zip")
 
+Write-Host "Deploying Bank UI..."
+Write-Host "Extracting $package.$buildNum.zip to $packageRoot"
 ExtractPackage $package".$buildNum.zip" "$packageRoot"
 Write-Output "Deploy Complete"
 

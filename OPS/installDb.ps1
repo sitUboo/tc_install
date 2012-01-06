@@ -181,10 +181,10 @@ function RunScript {
 
 function Install-SyncDtsPackage {
 
-    $sub1Path = (Resolve-Path "$package\content\SSIS\SyncDboPortal\SyncDboPortal_Sub_1.dtsx")
-    $sub2Path = (Resolve-Path "$package\content\SSIS\SyncDboPortal\SyncDboPortal_Sub_2.dtsx")
-    $packagePath = (Resolve-Path "$package\content\SSIS\SyncDboPortal\SyncDboPortal.dtsx")
-    $packageConfigPath = (Resolve-Path "$package\content\SSIS\SyncDboPortal\SyncDboPortal_Config.dtsConfig")
+    $sub1Path = (Resolve-Path "$package\SSIS\SyncBatchPortal\SyncDboPortal_Sub_1.dtsx")
+    $sub2Path = (Resolve-Path "$package\SSIS\SyncBatchPortal\SyncDboPortal_Sub_2.dtsx")
+    $packagePath = (Resolve-Path "$package\SSIS\SyncBatchPortal\SyncDboPortal.dtsx")
+    $packageConfigPath = (Resolve-Path "$package\SSIS\SyncBatchPortal\SyncDboPortal_Config.dtsConfig")
     
     $xml = [xml](get-content $packageConfigPath)
 
@@ -196,10 +196,10 @@ function Install-SyncDtsPackage {
                                                         "\Package.Variables[User::OPSPortal_Server].Properties[Value]" = $DatabaseServer;
                                                   }
 
-	$envPkgConfigPath = Get-ConfigFileName -FileNamePrefix "SyncDboPortal_Config"
+  $envPkgConfigPath = Get-ConfigFileName -FileNamePrefix "SyncDboPortal_Config"
   $xml.Save($envPkgConfigPath)
 	
-    RunScript -SqlFile "$package\Tools\AddSSISJob.sql" -SqlVariableHash @{"PACKAGEPATH"=$packagePath; "JOBNAME"="Sync Batch/Portal"; "DTSCONFIGPATH"=$envPkgConfigPath; 
+  RunScript -SqlFile "$package\DB\Build\Tools\AddSSISJob.sql" -SqlVariableHash @{"PACKAGEPATH"=$packagePath; "JOBNAME"="Sync Batch/Portal"; "DTSCONFIGPATH"=$envPkgConfigPath; 
                                                                    "JOBDESCRIPTION"="Job to synch batch and portal tables";
                                                                   }
 }
@@ -207,8 +207,8 @@ function Install-SyncDtsPackage {
 
 function Install-EtlFItoStageDtsPackage {
 
-    $packagePath = (Resolve-Path "$package\content\SSIS\ETL\ETL_MoveTrxnFromFIToStage.dtsx")
-    $packageConfigPath = (Resolve-Path "$package\content\SSIS\ETL\ETL_MoveTrxnFromFIToStage_Config.dtsConfig")
+    $packagePath = (Resolve-Path "$package\SSIS\ETL\ETL_MoveTrxnFromFIToStage.dtsx")
+    $packageConfigPath = (Resolve-Path "$package\SSIS\ETL\ETL_MoveTrxnFromFIToStage_Config.dtsConfig")
     
     $xml = [xml](get-content $packageConfigPath)
 
@@ -218,15 +218,15 @@ function Install-EtlFItoStageDtsPackage {
                               
     $envPkgConfigPath = Get-ConfigFileName -FileNamePrefix "ETL_MoveTrxnFromFIToStage_Config"
     $xml.Save($envPkgConfigPath)                                 
-    RunScript -SqlFile "$package\Tools\AddSSISJob.sql" -SqlVariableHash @{"PACKAGEPATH"=$packagePath; "JOBNAME"="ETL_MoveTrxnFromFIToStage"; "DTSCONFIGPATH"=$envPkgConfigPath; 
+    RunScript -SqlFile "$package\DB\Build\Tools\AddSSISJob.sql" -SqlVariableHash @{"PACKAGEPATH"=$packagePath; "JOBNAME"="ETL_MoveTrxnFromFIToStage"; "DTSCONFIGPATH"=$envPkgConfigPath; 
                                                                    "JOBDESCRIPTION"="Job to move transactions from FITrxn to STAGETrxn";
                                                                  }                                                  
 }
 
 function Install-EtlStagetoDboDtsPackage {
 
-    $packagePath = (Resolve-Path "$package\content\SSIS\ETL\ETL_MoveTrxnFromStageToDbo.dtsx")
-    $packageConfigPath = (Resolve-Path "$package\content\SSIS\ETL\ETL_MoveTrxnFromStageToDbo_Config.dtsConfig")
+    $packagePath = (Resolve-Path "$package\SSIS\ETL\ETL_MoveTrxnFromStageToDbo.dtsx")
+    $packageConfigPath = (Resolve-Path "$package\SSIS\ETL\ETL_MoveTrxnFromStageToDbo_Config.dtsConfig")
     
     $xml = [xml](get-content $packageConfigPath)
 
@@ -236,9 +236,25 @@ function Install-EtlStagetoDboDtsPackage {
                               
     $envPkgConfigPath = Get-ConfigFileName -FileNamePrefix "ETL_MoveTrxnFromStageToDbo_Config"
     $xml.Save($envPkgConfigPath)                                     
-    RunScript -SqlFile "$package\Tools\AddSSISJob.sql" -SqlVariableHash @{"PACKAGEPATH"=$packagePath; "JOBNAME"="ETL_MoveTrxnFromStageToDbo"; "DTSCONFIGPATH"=$envPkgConfigPath; 
+    RunScript -SqlFile "$package\DB\Build\Tools\AddSSISJob.sql" -SqlVariableHash @{"PACKAGEPATH"=$packagePath; "JOBNAME"="ETL_MoveTrxnFromStageToDbo"; "DTSCONFIGPATH"=$envPkgConfigPath; 
                                                                    "JOBDESCRIPTION"="Job to move transactions from STAGETrxn to dbo.Trxn";
-                                                                 }                                                  
+                                                     }                                                  
+}
+
+function CheckLogs {
+  $webclient = new-object system.net.webclient
+  $webclient.credentials = new-object system.net.networkcredential("sdeal", "Jannina1111")
+  $result = [xml]($webclient.DownloadString("http://vmteambuildserver/httpAuth/app/rest/builds?locator=running:true"))
+  foreach ($build in ($result.builds.build)){
+    $buildno = $build.id
+    $log = $webclient.DownloadString("http://vmteambuildserver/httpAuth/downloadBuildLog.html?buildId=$buildno")
+    foreach ($line in ($log.split("\n"))){
+      if($line -cmatch "Error:"){
+        Write-Host "##teamcity[message text='Error Detected: Marking deployment as failed.' errorDetails='line start $line line end' status='ERROR']";
+      }
+    }
+  }
+  Write-Host "##teamcity[message text='Completed Log Check' status='INFO']";
 }
 
 
@@ -254,11 +270,10 @@ $username = $hash['ops.db.username']
 $password = $hash['ops.db.password']
 
 foreach ($package in $packages){
-    $url = "http://vmteambuildserver/repository/download/$btNum/$buildId"+":id/$package.{build.number}.nupkg?guest=1"
+    $url = "http://vmteambuildserver/repository/download/$btNum/$buildId"+":id/$package.{build.number}.zip?guest=1"
     $filename = "$package.$buildNum.zip"
     $hash[$package] = "$package.$buildNum"
     Write-Host "Downloading $filename"
-    Write-Host "$url"
     (new-object net.webclient).DownloadFile($url,"$current_path\$filename")
     ExtractPackage "$current_path\$filename" "$current_path\$package.$buildNum"
 }
@@ -268,7 +283,7 @@ $DatabaseServer = $hash['portal.db.instance']
 $Database = $hash['portal.db']
 $user = $hash['ops.db.username']
 $pass = $hash['ops.db.password']
-$output = Invoke-Expression "$package\tools\SqlCompare\SQLCompare.exe /Scripts1:""$package\DB\content"" /server2:$DatabaseServer /db2:$Database /username2:$user /password2:$pass /sync /Include:identical /Force /Verbose /ScriptFile:$package\SchemaSyncScript.sql"
+$output = Invoke-Expression "$package\DB\Build\tools\SqlCompare\SQLCompare.exe /Scripts1:""$package\DB"" /server2:$DatabaseServer /db2:$Database /username2:$user /password2:$pass /sync /Include:identical /Force /Verbose /ScriptFile:$package\SchemaSyncScript-Portal.sql"
 Write-Output $output
 
 #import
@@ -277,7 +292,7 @@ $DatabaseServer = $hash['import.db.instance']
 $Database = $hash['import.db']
 $user = $hash['ops.db.username']
 $pass = $hash['ops.db.password']
-$output = Invoke-Expression "$package\tools\SqlCompare\SQLCompare.exe /Scripts1:""$package\DB\content"" /server2:$DatabaseServer /db2:$Database /username2:$user /password2:$pass /sync /Include:identical /Force /Verbose /ScriptFile:$package\SchemaSyncScript.sql"
+$output = Invoke-Expression "$package\DB\Build\tools\SqlCompare\SQLCompare.exe /Scripts1:""$package\DB"" /server2:$DatabaseServer /db2:$Database /username2:$user /password2:$pass /sync /Include:identical /Force /Verbose /ScriptFile:$package\SchemaSyncScript-Import.sql"
 Write-Output $output
 
 #batch
@@ -287,11 +302,11 @@ $Database = $hash['batch.db']
 $user = $hash['ops.db.username']
 $pass = $hash['ops.db.password']
 
-if(-not( Test-Path "$package\content\SSIS Packages")) {
-  rename-item "$package\content\SSIS%20Packages" "SSIS Packages"
-  rename-item "$package\content\Stored%20Procedures" "Stored Procedures"
+if(-not( Test-Path "$package\DB\SSIS Packages")) {
+  rename-item "$package\DB\SSIS%20Packages" "SSIS Packages"
+  rename-item "$package\DB\Stored%20Procedures" "Stored Procedures"
 }
-Invoke-Expression "$package\tools\SqlCompare\SQLCompare.exe /ignoreParserErrors /Options:Default,IgnoreComments /Scripts1:""$package\DB\content"" /server2:$DatabaseServer /db2:$Database /username2:$user /password2:$pass /Include:identical /Force /ScriptFile:$package\SchemaSyncScript-Batch.sql"
+Invoke-Expression "$package\DB\Build\tools\SqlCompare\SQLCompare.exe /ignoreParserErrors /Options:Default,IgnoreComments /Scripts1:""$package\DB"" /server2:$DatabaseServer /db2:$Database /username2:$user /password2:$pass /Include:identical /Force /ScriptFile:$package\SchemaSyncScript-Batch.sql"
 Get-Content "$package\SchemaSyncScript-Batch.sql" | ForEach-Object { $_ -replace "SET TRANSACTION ISOLATION LEVEL SERIALIZABLE", "SET TRANSACTION ISOLATION LEVEL READ COMMITTED" } | Set-Content "$package\SchemaSyncScript-Batch-mod.sql"
 
 # execute change set
@@ -300,6 +315,6 @@ Invoke-Expression "sqlcmd.exe -S $DatabaseServer -U $user -P $pass -d $Database 
 Install-SyncDtsPackage
 Install-EtlFItoStageDtsPackage
 Install-EtlStagetoDboDtsPackage
-
+CheckLogs
 exit "ErrorCode: " + $LASTEXITCODE
 

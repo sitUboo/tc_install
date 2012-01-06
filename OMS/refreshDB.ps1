@@ -112,6 +112,22 @@ function getClientProjectId($str){
   return $clientProjects[$str];
 }
 
+function CheckLogs {
+  $webclient = new-object system.net.webclient
+  $webclient.credentials = new-object system.net.networkcredential("sdeal", "Jannina1111")
+  $result = [xml]($webclient.DownloadString("http://vmteambuildserver/httpAuth/app/rest/builds?locator=running:true"))
+  foreach ($build in ($result.builds.build)){
+    $buildno = $build.id
+    $log = $webclient.DownloadString("http://vmteambuildserver/httpAuth/downloadBuildLog.html?buildId=$buildno")
+    foreach ($line in ($log.split("\n"))){
+      if($line -cmatch "Error:"){
+        Write-Host "##teamcity[message text='Error Detected: Marking deployment as failed.' errorDetails='line start $line line end' status='ERROR']";
+      }
+    }
+  }
+  Write-Host "##teamcity[message text='Completed Log Check' status='INFO']";
+}
+
 Set-Location "C:\tc_install\OMS"
 $script:ErrorActionPreference = "Stop"
 $hash = Init $configFile
@@ -132,4 +148,5 @@ $user = $hash['oms.db.username']
 $pass = $hash['oms.db.password']
 $output = Invoke-Expression "$package\tools\SqlCompare\SQLCompare.exe /Scripts1:""$package\content"" /server2:$dbinstance /db2:$db /username2:$user /password2:$pass /sync /Include:identical /Force /Verbose /ScriptFile:$package\SchemaSyncScript.sql"
 Write-Output $output
+CheckLogs
 exit $LASTEXITCODE
