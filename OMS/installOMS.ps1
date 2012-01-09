@@ -115,7 +115,7 @@ function getClientProjectId($str){
 function UnInstall() {
     $name = $hash['oms.site.name']
     foreach ($obj in (Get-ChildItem "IIS:\Sites" | Where-Object { $_.name -eq "$name" })){
-        Write-Host "Uninstalling $obj.name"
+        Write-Host "Uninstalling $name"
         if($obj.status -eq 'Started'){
             Stop-WebSite -Name $name
         }

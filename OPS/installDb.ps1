@@ -283,7 +283,7 @@ $DatabaseServer = $hash['portal.db.instance']
 $Database = $hash['portal.db']
 $user = $hash['ops.db.username']
 $pass = $hash['ops.db.password']
-$output = Invoke-Expression "$package\DB\Build\tools\SqlCompare\SQLCompare.exe /Scripts1:""$package\DB"" /server2:$DatabaseServer /db2:$Database /username2:$user /password2:$pass /sync /Include:identical /Force /Verbose /ScriptFile:$package\SchemaSyncScript-Portal.sql"
+#$output = Invoke-Expression "$package\DB\Build\tools\SqlCompare\SQLCompare.exe /Scripts1:""$package\DB"" /server2:$DatabaseServer /db2:$Database /username2:$user /password2:$pass /sync /Include:identical /Force /Verbose /ScriptFile:$package\SchemaSyncScript-Portal.sql"
 Write-Output $output
 
 #import
@@ -292,7 +292,7 @@ $DatabaseServer = $hash['import.db.instance']
 $Database = $hash['import.db']
 $user = $hash['ops.db.username']
 $pass = $hash['ops.db.password']
-$output = Invoke-Expression "$package\DB\Build\tools\SqlCompare\SQLCompare.exe /Scripts1:""$package\DB"" /server2:$DatabaseServer /db2:$Database /username2:$user /password2:$pass /sync /Include:identical /Force /Verbose /ScriptFile:$package\SchemaSyncScript-Import.sql"
+#$output = Invoke-Expression "$package\DB\Build\tools\SqlCompare\SQLCompare.exe /Scripts1:""$package\DB"" /server2:$DatabaseServer /db2:$Database /username2:$user /password2:$pass /sync /Include:identical /Force /Verbose /ScriptFile:$package\SchemaSyncScript-Import.sql"
 Write-Output $output
 
 #batch
