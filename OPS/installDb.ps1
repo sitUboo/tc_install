@@ -241,6 +241,44 @@ function Install-EtlStagetoDboDtsPackage {
                                                      }                                                  
 }
 
+function Install-GenerateConsumerAlertsDtsPackage {
+    $packagePath = (Resolve-Path "$package\SSIS\Spidey\ConsumerAlerts\GenerateConsumerAlerts.dtsx")
+    $packageConfigPath = (Resolve-Path "$package\SSIS\Spidey\ConsumerAlerts\GenerateConsumerAlerts_Config.dtsConfig")
+    
+    $xml = [xml](get-content $packageConfigPath)
+
+    Set-DtsPackageParams -XmlConfig $xml -ParamHash @{ "\Package.Connections[OPS Batch DB].Properties[InitialCatalog]" = $Database;
+                                                        "\Package.Connections[OPS Batch DB].Properties[ServerName]" = $DatabaseServer;
+                                                        "\Package.Variables[User::AlertInfoFileName].Properties[Value]" = $hash['alert.file.name'];
+                                                        "\Package.Variables[User::OfferInfoFileName].Properties[Value]" = $hash['offerinfo.file.name'];
+                                                        "\Package.Variables[User::TargetPath].Properties[Value]" = $hash['alert.targetpath'];
+                                                     }
+                              
+    $envPkgConfigPath = Get-ConfigFileName -FileNamePrefix "GenerateConsumerAlerts_Config"
+    $xml.Save($envPkgConfigPath)                                     
+    RunScript -SqlFile "$package\DB\Build\Tools\AddSSISJob.sql" -SqlVariableHash @{"PACKAGEPATH"=$packagePath; "JOBNAME"="GenerateConsumerAlerts"; "DTSCONFIGPATH"=$envPkgConfigPath; 
+                                                                   "JOBDESCRIPTION"="Job to generate consumer alerts";
+                                                     }                                                  
+}
+
+function Install-GenerateRewardsFileDtsPackage {
+    $packagePath = (Resolve-Path "$package\SSIS\Spidey\RewardsFile\GenerateRewardsFile.dtsx")
+    $packageConfigPath = (Resolve-Path "$package\SSIS\Spidey\RewardsFile\GenerateRewardsFile_Config.dtsConfig")
+    
+    $xml = [xml](get-content $packageConfigPath)
+
+    Set-DtsPackageParams -XmlConfig $xml -ParamHash @{ "\Package.Variables[User::Credit_File_Name].Properties[Value]" = $hash['credit.file.name'];
+                                                        "\Package.Variables[User::Debit_File_Name].Properties[Value]" = $hash['debit.file.name'];
+                                                        "\Package.Variables[User::Output_File_Path].Properties[Value]" = $hash['output.file.path'];
+                                                     }
+                              
+    $envPkgConfigPath = Get-ConfigFileName -FileNamePrefix "GenerateRewardsFile_Config"
+    $xml.Save($envPkgConfigPath)                                     
+    RunScript -SqlFile "$package\DB\Build\Tools\AddSSISJob.sql" -SqlVariableHash @{"PACKAGEPATH"=$packagePath; "JOBNAME"="GenerateRewardsFile"; "DTSCONFIGPATH"=$envPkgConfigPath; 
+                                                                   "JOBDESCRIPTION"="Job to generate rewards file";
+                                                     }                                                  
+}
+
 function CheckLogs {
   $webclient = new-object system.net.webclient
   $webclient.credentials = new-object system.net.networkcredential("sdeal", "Jannina1111")
@@ -315,6 +353,8 @@ Invoke-Expression "sqlcmd.exe -S $DatabaseServer -U $user -P $pass -d $Database 
 Install-SyncDtsPackage
 Install-EtlFItoStageDtsPackage
 Install-EtlStagetoDboDtsPackage
+Install-GenerateConsumerAlertsDtsPackage
+Install-GenerateRewardsFileDtsPackage
 CheckLogs
 exit "ErrorCode: " + $LASTEXITCODE
 
