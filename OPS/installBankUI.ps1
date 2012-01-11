@@ -129,9 +129,8 @@ $package = $project
 $btnum = getBankUIProjectId $project
 $buildNum = getBuildNum $btnum $hash['pinned']
 $buildId = getBuildId $btnum $hash['pinned']
-#spidey is not doing multiple build configurations but i will probably add that
-#$mode = $hash['release.mode']
-$packageAddress = "http://vmteambuildserver/repository/download/$btnum/$buildId"+":id/$package.{build.number}.zip?guest=1";
+$mode = $hash['release.mode']
+$packageAddress = "http://vmteambuildserver/repository/download/$btnum/$buildId"+":id/$package.{build.number}-$mode.zip?guest=1";
 $current_path = resolve-path "."
 $packageRoot = "$current_path\"+$hash['ops.site.name']
 (new-object net.webclient).DownloadFile($packageAddress,"$current_path\$package.$buildNum.zip")
