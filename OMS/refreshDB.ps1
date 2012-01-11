@@ -91,12 +91,20 @@ function Init(){
 }
 
 function getBuildId($configId, $pin_status){
-  $address = "http://vmteambuildserver/app/rest/buildTypes/id:$configId/builds/status:SUCCESS,pinned:$pin_status/id?guest=1";
+  if($pin_status -eq $true){
+    $address = "http://vmteambuildserver/app/rest/buildTypes/id:$configId/builds/status:SUCCESS,pinned:$pin_status/id?guest=1";
+  }else{
+    $address = "http://vmteambuildserver/app/rest/buildTypes/id:$configId/builds/status:SUCCESS/id?guest=1";
+  }
   return (new-object net.webclient).DownloadString($address);
 }
 
 function getBuildNum($configId, $pin_status){
-  $address = "http://vmteambuildserver/app/rest/buildTypes/id:$configId/builds/status:SUCCESS,pinned:$pin_status/number?guest=1";
+  if($pin_status -eq $true){
+    $address = "http://vmteambuildserver/app/rest/buildTypes/id:$configId/builds/status:SUCCESS,pinned:$pin_status/number?guest=1";
+  }else{
+    $address = "http://vmteambuildserver/app/rest/buildTypes/id:$configId/builds/status:SUCCESS/number?guest=1";
+  }
   return (new-object net.webclient).DownloadString($address);
 }
 

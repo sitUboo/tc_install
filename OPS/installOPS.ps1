@@ -91,12 +91,20 @@ function Init(){
 }
 
 function getBuildId($configId, $pin_status){
-  $address = "http://vmteambuildserver/app/rest/buildTypes/id:$configId/builds/status:SUCCESS,pinned:$pin_status/id?guest=1";
+  if($pin_status -eq $true){
+    $address = "http://vmteambuildserver/app/rest/buildTypes/id:$configId/builds/status:SUCCESS,pinned:$pin_status/id?guest=1";
+  }else{
+    $address = "http://vmteambuildserver/app/rest/buildTypes/id:$configId/builds/status:SUCCESS/id?guest=1";
+  }
   return (new-object net.webclient).DownloadString($address);
 }
 
 function getBuildNum($configId, $pin_status){
-  $address = "http://vmteambuildserver/app/rest/buildTypes/id:$configId/builds/status:SUCCESS,pinned:$pin_status/number?guest=1";
+  if($pin_status -eq $true){
+    $address = "http://vmteambuildserver/app/rest/buildTypes/id:$configId/builds/status:SUCCESS,pinned:$pin_status/number?guest=1";
+  }else{
+    $address = "http://vmteambuildserver/app/rest/buildTypes/id:$configId/builds/status:SUCCESS/number?guest=1";
+  }
   return (new-object net.webclient).DownloadString($address);
 }
 
@@ -173,6 +181,8 @@ $buildId = getBuildId $btnum $hash['pinned']
 #OPS is not doing multiple build configurations yet
 #$mode = $hash['release.mode']
 $packageAddress = "http://vmteambuildserver/repository/download/$btnum/$buildId"+":id/$project.{build.number}.zip?guest=1";
+Write-Host $packageAddress
+exit 0;
 $current_path = resolve-path "."
 $packageRoot = "$current_path\$package"
 (new-object net.webclient).DownloadFile($packageAddress,"$current_path\$package.$buildNum.zip")

@@ -91,12 +91,20 @@ function Init(){
 }
 
 function getBuildId($configId, $pin_status){
-  $address = "http://vmteambuildserver/app/rest/buildTypes/id:$configId/builds/status:SUCCESS,pinned:$pin_status/id?guest=1";
+  if($pin_status -eq $true){
+    $address = "http://vmteambuildserver/app/rest/buildTypes/id:$configId/builds/status:SUCCESS,pinned:$pin_status/id?guest=1";
+  }else{
+    $address = "http://vmteambuildserver/app/rest/buildTypes/id:$configId/builds/status:SUCCESS/id?guest=1";
+  }
   return (new-object net.webclient).DownloadString($address);
 }
 
 function getBuildNum($configId, $pin_status){
-  $address = "http://vmteambuildserver/app/rest/buildTypes/id:$configId/builds/status:SUCCESS,pinned:$pin_status/number?guest=1";
+  if($pin_status -eq $true){
+    $address = "http://vmteambuildserver/app/rest/buildTypes/id:$configId/builds/status:SUCCESS,pinned:$pin_status/number?guest=1";
+  }else{
+    $address = "http://vmteambuildserver/app/rest/buildTypes/id:$configId/builds/status:SUCCESS/number?guest=1";
+  }
   return (new-object net.webclient).DownloadString($address);
 }
 
@@ -282,13 +290,14 @@ function Install-GenerateRewardsFileDtsPackage {
 function CheckLogs {
   $webclient = new-object system.net.webclient
   $webclient.credentials = new-object system.net.networkcredential("sdeal", "Jannina1111")
-  $result = [xml]($webclient.DownloadString("http://vmteambuildserver/httpAuth/app/rest/builds?locator=running:true"))
+  $result = [Xml]($webclient.DownloadString("http://vmteambuildserver/httpAuth/app/rest/builds?locator=running:true"))
   foreach ($build in ($result.builds.build)){
     $buildno = $build.id
     $log = $webclient.DownloadString("http://vmteambuildserver/httpAuth/downloadBuildLog.html?buildId=$buildno")
-    foreach ($line in ($log.split("\n"))){
-      if($line -cmatch "Error:"){
+    foreach ($line in ($log.split("`n"))){
+      if(($line -cmatch "Error:") -or ($line -cmatch "DotNetMethodException")){
         Write-Host "##teamcity[message text='Error Detected: Marking deployment as failed.' errorDetails='line start $line line end' status='ERROR']";
+        exit -1;
       }
     }
   }
