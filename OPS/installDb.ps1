@@ -353,6 +353,7 @@ if(-not( Test-Path "$package\DB\SSIS Packages")) {
   rename-item "$package\DB\SSIS%20Packages" "SSIS Packages"
   rename-item "$package\DB\Stored%20Procedures" "Stored Procedures"
 }
+#Invoke-Expression "$package\DB\Build\tools\SqlCompare\SQLCompare.exe /ignoreParserErrors /Options:IgnoreComments,IgnoreDatabaseAndServerName,fg /Scripts1:""$package\DB"" /server2:$DatabaseServer /db2:$Database /username2:$user /password2:$pass /Include:identical /Force /ScriptFile:$package\SchemaSyncScript-Batch.sql"
 Invoke-Expression "$package\DB\Build\tools\SqlCompare\SQLCompare.exe /ignoreParserErrors /Options:Default,IgnoreComments /Scripts1:""$package\DB"" /server2:$DatabaseServer /db2:$Database /username2:$user /password2:$pass /Include:identical /Force /ScriptFile:$package\SchemaSyncScript-Batch.sql"
 Get-Content "$package\SchemaSyncScript-Batch.sql" | ForEach-Object { $_ -replace "SET TRANSACTION ISOLATION LEVEL SERIALIZABLE", "SET TRANSACTION ISOLATION LEVEL READ COMMITTED" } | Set-Content "$package\SchemaSyncScript-Batch-mod.sql"
 
@@ -364,6 +365,8 @@ Install-EtlFItoStageDtsPackage
 Install-EtlStagetoDboDtsPackage
 Install-GenerateConsumerAlertsDtsPackage
 Install-GenerateRewardsFileDtsPackage
-CheckLogs
+foreach ($package in $packages){
+    Remove-Item $package".$buildNum.zip"
+}
 exit "ErrorCode: " + $LASTEXITCODE
 

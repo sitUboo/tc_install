@@ -146,5 +146,6 @@ $packageRoot = "$current_path\"+$hash['ops.site.name']
 Write-Host "Deploying Bank UI..."
 Write-Host "Extracting $package.$buildNum.zip to $packageRoot"
 ExtractPackage $package".$buildNum.zip" "$packageRoot"
+Remove-Item $package".$buildNum.zip"
 Write-Output "Deploy Complete"
 

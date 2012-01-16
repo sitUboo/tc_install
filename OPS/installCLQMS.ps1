@@ -158,4 +158,5 @@ UnInstall
 ExtractPackage $package".$buildNum.zip" "$packageRoot"
 UpdateConfiguration
 Install
+Remove-Item $package".$buildNum.zip"
 Write-Output "Deploy Complete"

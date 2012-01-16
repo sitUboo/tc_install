@@ -156,10 +156,10 @@ function UnInstall() {
             Stop-WebSite -Name $name
         }
         Remove-WebSite -Name $obj.name
-        Write-Host "Removing Site Files"
-        if(Test-Path ($obj.physicalPath)){
-            Remove-Item $obj.physicalPath -recurse -force -exclude ClingTrace.svclog
-        }
+#        Write-Host "Removing Site Files"
+#        if(Test-Path ($obj.physicalPath)){
+#            Remove-Item $obj.physicalPath -recurse -force -exclude ClingTrace.svclog
+#        }
     }
 }
 
@@ -181,5 +181,6 @@ $packageRoot += $hash['cling.site.name']
 ExtractPackage $package".$mode.$buildNum.zip" "$packageRoot"
 UpdateConfiguration
 Install
+Remove-Item $package".$mode.$buildNum.zip"
 Write-Output "Deploy Complete"
 

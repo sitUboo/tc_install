@@ -91,20 +91,12 @@ function Init(){
 }
 
 function getBuildId($configId, $pin_status){
-  if($pin_status -eq $true){
-    $address = "http://vmteambuildserver/app/rest/buildTypes/id:$configId/builds/status:SUCCESS,pinned:$pin_status/id?guest=1";
-  }else{
-    $address = "http://vmteambuildserver/app/rest/buildTypes/id:$configId/builds/status:SUCCESS/id?guest=1";
-  }
+  $address = "http://vmteambuildserver/app/rest/buildTypes/id:$configId/builds/status:SUCCESS,pinned:$pin_status/id?guest=1";
   return (new-object net.webclient).DownloadString($address);
 }
 
 function getBuildNum($configId, $pin_status){
-  if($pin_status -eq $true){
-    $address = "http://vmteambuildserver/app/rest/buildTypes/id:$configId/builds/status:SUCCESS,pinned:$pin_status/number?guest=1";
-  }else{
-    $address = "http://vmteambuildserver/app/rest/buildTypes/id:$configId/builds/status:SUCCESS/number?guest=1";
-  }
+  $address = "http://vmteambuildserver/app/rest/buildTypes/id:$configId/builds/status:SUCCESS,pinned:$pin_status/number?guest=1";
   return (new-object net.webclient).DownloadString($address);
 }
 
@@ -123,13 +115,14 @@ function getClientProjectId($str){
 function CheckLogs {
   $webclient = new-object system.net.webclient
   $webclient.credentials = new-object system.net.networkcredential("sdeal", "Jannina1111")
-  $result = [xml]($webclient.DownloadString("http://vmteambuildserver/httpAuth/app/rest/builds?locator=running:true"))
+  $result = [Xml]($webclient.DownloadString("http://vmteambuildserver/httpAuth/app/rest/builds?locator=running:true"))
   foreach ($build in ($result.builds.build)){
     $buildno = $build.id
     $log = $webclient.DownloadString("http://vmteambuildserver/httpAuth/downloadBuildLog.html?buildId=$buildno")
-    foreach ($line in ($log.split("\n"))){
-      if($line -cmatch "Error:"){
+    foreach ($line in ($log.split("`n"))){
+      if(($line -cmatch "Error:") -or ($line -cmatch "DotNetMethodException")){
         Write-Host "##teamcity[message text='Error Detected: Marking deployment as failed.' errorDetails='line start $line line end' status='ERROR']";
+        exit -1;
       }
     }
   }
@@ -157,4 +150,5 @@ $pass = $hash['oms.db.password']
 $output = Invoke-Expression "$package\tools\SqlCompare\SQLCompare.exe /Scripts1:""$package\content"" /server2:$dbinstance /db2:$db /username2:$user /password2:$pass /sync /Include:identical /Force /Verbose /ScriptFile:$package\SchemaSyncScript.sql"
 Write-Output $output
 CheckLogs
+Remove-Item $package"_$buildNum.zip"
 exit $LASTEXITCODE

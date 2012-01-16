@@ -128,10 +128,10 @@ function UnInstall() {
             Stop-WebSite -Name $name
         }
         Remove-WebSite -Name $obj.name
-        Write-Host "Removing Site Files"
-        if(Test-Path ($obj.physicalPath)){
-            Remove-Item $obj.physicalPath -recurse -force -exclude *.svclog
-        }
+        #Write-Host "Removing Site Files"
+        #if(Test-Path ($obj.physicalPath)){
+        #    Remove-Item $obj.physicalPath -recurse -force -exclude *.svclog
+        #}
     }
 }
 
@@ -190,5 +190,6 @@ $packageRoot += $hash['oms.site.name']
 ExtractPackage $package".$mode.$buildNum.zip" "$packageRoot"
 UpdateConfiguration
 Install
+Remove-Item $package".$mode.$buildNum.zip"
 Write-Host "Deploy Complete"
 

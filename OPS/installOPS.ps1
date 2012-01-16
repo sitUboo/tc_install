@@ -20,6 +20,13 @@ function ExtractPackage($package,$path){
     expand-archive $package "$path"
 }
 
+function ConfigureIIS() {
+	VerifyHasIISModule("RewriteModule", "ApplicationRequestRouting")
+  if(-not((Get-WebConfigurationProperty -Filter "system.webServer/proxy" -Name "enabled").Value)) {
+    Set-WebConfigurationProperty -Filter "system.webServer/proxy" -Name "enabled" -Value "True"
+	}
+}
+
 function ValidateAndLoadWebAdminModule() {
     if ([System.Version] (Get-ItemProperty -path "HKLM:\Software\Microsoft\Windows NT\CurrentVersion").CurrentVersion -ge [System.Version] "6.1") {
         if(-not(Get-Module -ListAvailable | Where-Object { $_.name -eq "WebAdministration" })) {
@@ -120,6 +127,21 @@ function getClientProjectId($str){
   return $clientProjects[$str];
 }
 
+function VerifyHasIISModule($moduleNames) {
+	foreach($moduleName in $moduleNames) {
+	    if(-not(Get-WebConfiguration -Filter "system.webServer/globalModules/add[@name='$moduleName']" -PSPath IIS:\)) {
+		      Write-Host "The IIS module $moduleName is required. The Deployment script will now exit" -foregroundcolor red
+		      Write-Host
+		      Wait-KeyPress("Press any-key to navigate to the download site...")
+		      switch($moduleName) {
+			        "RewriteModule" { [System.Diagnostics.Process]::Start("http://www.iis.net/download/urlrewrite") }
+			        "ApplicationRequestRouting" { [System.Diagnostics.Process]::Start("http://www.iis.net/download/ApplicationRequestRouting") }
+		      }
+		      Exit
+	    }
+	}
+}
+
 function UnInstall() {
     $name = $hash['ops.site.name']
     foreach ($obj in (Get-ChildItem "IIS:\Sites" | Where-Object { $_.name -eq "$name" })){
@@ -145,18 +167,19 @@ function Install(){
     $name = $hash['ops.site.name']
     CreateApplicationPool($name)
     New-WebSite -Name $name -ApplicationPool $name -Port $hash['ops.site.port'] -PhysicalPath $packageRoot
-	trap [System.Runtime.InteropServices.COMException] {
-            Write-Host "Threw the Invalid class string error."
+    trap [System.Runtime.InteropServices.COMException] {
+            Write-Host "Expected: Invalid class string exception."
             continue;
-        }
-	sleep 10
-	if((Get-Website -Name $name | select State) -eq "Stopped"){
+    }
+	  sleep 10
+	  if((Get-Website -Name $name | select State) -eq "Stopped"){
 	    Write-Host "Starting $name"
 	    Start-WebSite -Name $name
-	}
+	  }
 }
 
 function UpdateConfiguration(){
+    ConfigureIIS
     $webconfig = [xml](Get-Content "$packageRoot\Web.config")
     $opsConnStr = $webconfig.configuration.connectionStrings.add | where-object { $_.name -eq "Ops" }
     $cstr = "Data Source="+$hash['batch.db.instance']+";Initial Catalog="+$hash['batch.db']+";Persist Security Info=True;User ID="+$hash['ops.db.username']+";Password="+$hash['ops.db.password']+""
@@ -164,11 +187,34 @@ function UpdateConfiguration(){
     $portalConnStr = $webconfig.configuration.connectionStrings.add | where-object { $_.name -eq "Portal" }
     $cstr = "Data Source="+$hash['portal.db.instance']+";Initial Catalog="+$hash['portal.db']+";Persist Security Info=True;User ID="+$hash['ops.db.username']+";Password="+$hash['ops.db.password']+""
     $portalConnStr.SetAttribute("connectionString",$cstr)
-	if($hash['installMode'] -eq 'debug'){
-		$node = $webconfig.SelectSingleNode('//soapExtensionTypes/add[@type="Cardlytics.Framework.Web.WSCompressionExtension, Cardlytics.Framework"]')
-		$node.ParentNode.RemoveChild($node)
-	}
-	$webconfig.save("$packageRoot\Web.config");
+	  if($hash['installMode'] -eq 'debug'){
+		  $node = $webconfig.SelectSingleNode('//soapExtensionTypes/add[@type="Cardlytics.Framework.Web.WSCompressionExtension, Cardlytics.Framework"]')
+		  $node.ParentNode.RemoveChild($node)
+	  }
+    $root = $webconfig.configuration.'system.webServer'
+    $rewriteElem = $webconfig.CreateElement("rewrite")
+    [void]$root.AppendChild($rewriteElem)
+    $rulesElem = $webconfig.CreateElement("rules")
+    [void]$rewriteElem.AppendChild($rulesElem)
+    $ruleElem = $webconfig.CreateElement("rule")
+    $ruleElem.setAttribute("name","OPS")
+    $ruleElem.setAttribute("enabled","true")
+    $ruleElem.setAttribute("patternSyntax","Wildcard")
+    [void]$rulesElem.AppendChild($ruleElem)
+    $matchElem = $webconfig.CreateElement("match")
+    $matchElem.setAttribute("url","*OPS*")
+    [void]$ruleElem.AppendChild($matchElem)
+    $conditionsElem = $webconfig.CreateElement("conditions")
+    [void]$ruleElem.AppendChild($conditionsElem)
+    $addElem = $webconfig.CreateElement("add")
+    $addElem.setAttribute("input","{REQUEST_URI}")
+    $addElem.setAttribute("pattern","*OPS*")
+    [void]$conditionsElem.AppendChild($addElem)
+    $actionElem = $webconfig.CreateElement("action")
+    $actionElem.setAttribute("type","Rewrite")
+    $actionElem.setAttribute("url","http://"+$hash['ops.host']+':'+$hash['ops.site.port']+"/public/{R:2}")
+    [void]$ruleElem.AppendChild($actionElem)
+	  $webconfig.save("$packageRoot\Web.config");
 }
 
 Set-Location "C:\tc_install\OPS"
@@ -181,8 +227,6 @@ $buildId = getBuildId $btnum $hash['pinned']
 #OPS is not doing multiple build configurations yet
 #$mode = $hash['release.mode']
 $packageAddress = "http://vmteambuildserver/repository/download/$btnum/$buildId"+":id/$project.{build.number}.zip?guest=1";
-Write-Host $packageAddress
-exit 0;
 $current_path = resolve-path "."
 $packageRoot = "$current_path\$package"
 (new-object net.webclient).DownloadFile($packageAddress,"$current_path\$package.$buildNum.zip")
@@ -192,5 +236,6 @@ UnInstall
 ExtractPackage $package".$buildNum.zip" "$packageRoot"
 UpdateConfiguration
 Install
+Remove-Item $package".$buildNum.zip"
 Write-Output "Deploy Complete"
 

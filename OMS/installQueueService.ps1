@@ -195,5 +195,6 @@ foreach ($service in ($hash['queue.services'].split(','))){
   Install $packageRoot
   StartService $service
 }
+Remove-Item $package".$mode.$buildNum.zip"
 Write-Output "Deploy Complete"
 
