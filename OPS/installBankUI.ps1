@@ -137,7 +137,7 @@ $package = $project
 $btnum = getBankUIProjectId $project
 $buildNum = getBuildNum $btnum $hash['pinned']
 $buildId = getBuildId $btnum $hash['pinned']
-$mode = $hash['release.mode']
+$mode = 'Debug'#$hash['release.mode']
 $packageAddress = "http://vmteambuildserver/repository/download/$btnum/$buildId"+":id/$package.{build.number}-$mode.zip?guest=1";
 $current_path = resolve-path "."
 $packageRoot = "$current_path\"+$hash['ops.site.name']

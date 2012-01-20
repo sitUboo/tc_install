@@ -212,7 +212,7 @@ function UpdateConfiguration(){
     [void]$conditionsElem.AppendChild($addElem)
     $actionElem = $webconfig.CreateElement("action")
     $actionElem.setAttribute("type","Rewrite")
-    $actionElem.setAttribute("url","http://"+$hash['ops.host']+':'+$hash['ops.site.port']+"/public/{R:2}")
+    $actionElem.setAttribute("url","http://"+$hash['ops.host']+':'+$hash['ops.site.port']+"/public{R:2}")
     [void]$ruleElem.AppendChild($actionElem)
 	  $webconfig.save("$packageRoot\Web.config");
 }
