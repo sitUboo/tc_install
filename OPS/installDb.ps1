@@ -287,23 +287,16 @@ function Install-GenerateRewardsFileDtsPackage {
                                                      }                                                  
 }
 
-function CheckLogs {
-  $webclient = new-object system.net.webclient
-  $webclient.credentials = new-object system.net.networkcredential("sdeal", "Jannina1111")
-  $result = [Xml]($webclient.DownloadString("http://vmteambuildserver/httpAuth/app/rest/builds?locator=running:true"))
-  foreach ($build in ($result.builds.build)){
-    $buildno = $build.id
-    $log = $webclient.DownloadString("http://vmteambuildserver/httpAuth/downloadBuildLog.html?buildId=$buildno")
-    foreach ($line in ($log.split("`n"))){
-      if(($line -cmatch "Error:") -or ($line -cmatch "DotNetMethodException")){
-        Write-Host "##teamcity[message text='Error Detected: Marking deployment as failed.' errorDetails='line start $line line end' status='ERROR']";
-        exit -1;
-      }
-    }
-  }
-  Write-Host "##teamcity[message text='Completed Log Check' status='INFO']";
+function DbBackup{
+  $query = "SELECT msdb.dbo.backupmediafamily.physical_device_name,msdb.dbo.backupset.name FROM msdb.dbo.backupmediafamily INNER JOIN msdb.dbo.backupset ON msdb.dbo.backupmediafamily.media_set_id = msdb.dbo.backupset.media_set_id WHERE msdb.dbo.backupset.database_name = `'$Database`' order by msdb.dbo.backupset.backup_finish_date desc"
+  Invoke-Expression "sqlcmd.exe -S $DatabaseServer -U $user -P $pass -d master -W -s ',' -h -1 -Q `"$query`" -o crap.txt" 
+  $line = Get-Content "crap.txt" | Select-Object -first 1
+  Remove-Item "crap.txt"
+  $tokens = $line.split(",")
+  $name = $tokens[1]
+  $file = $tokens[0]
+  Invoke-Expression "sqlcmd.exe -S $DatabaseServer -U $user -P $pass -d master -Q `"BACKUP DATABASE [$Database] to DISK =N'$file' WITH NAME = N'$name', NOSKIP, STATS = 10, NOFORMAT`""
 }
-
 
 Set-Location "C:\tc_install\OPS"
 $script:ErrorActionPreference = "Stop"
@@ -321,8 +314,12 @@ foreach ($package in $packages){
     $filename = "$package.$buildNum.zip"
     $hash[$package] = "$package.$buildNum"
     Write-Host "Downloading $filename"
-    (new-object net.webclient).DownloadFile($url,"$current_path\$filename")
-    ExtractPackage "$current_path\$filename" "$current_path\$package.$buildNum"
+    if(-not (Test-Path "$current_path\$filename")) {
+      (new-object net.webclient).DownloadFile($url,"$current_path\$filename")
+      if(-not (Test-Path "$current_path\$package.$buildNum")){
+        ExtractPackage "$current_path\$filename" "$current_path\$package.$buildNum"
+      }
+    }
 }
 #portal
 $package = $hash["OPS-Portal-DB"]
@@ -330,6 +327,7 @@ $DatabaseServer = $hash['portal.db.instance']
 $Database = $hash['portal.db']
 $user = $hash['ops.db.username']
 $pass = $hash['ops.db.password']
+#DbBackup
 $output = Invoke-Expression "$package\DB\Build\tools\SqlCompare\SQLCompare.exe /Scripts1:""$package\DB"" /server2:$DatabaseServer /db2:$Database /username2:$user /password2:$pass /sync /Include:identical /Force /Verbose /ScriptFile:$package\SchemaSyncScript-Portal.sql"
 Write-Output $output
 
@@ -339,6 +337,7 @@ $DatabaseServer = $hash['import.db.instance']
 $Database = $hash['import.db']
 $user = $hash['ops.db.username']
 $pass = $hash['ops.db.password']
+#DbBackup
 $output = Invoke-Expression "$package\DB\Build\tools\SqlCompare\SQLCompare.exe /Scripts1:""$package\DB"" /server2:$DatabaseServer /db2:$Database /username2:$user /password2:$pass /sync /Include:identical /Force /Verbose /ScriptFile:$package\SchemaSyncScript-Import.sql"
 Write-Output $output
 
@@ -353,6 +352,7 @@ if(-not( Test-Path "$package\DB\SSIS Packages")) {
   rename-item "$package\DB\SSIS%20Packages" "SSIS Packages"
   rename-item "$package\DB\Stored%20Procedures" "Stored Procedures"
 }
+#DbBackup
 #Invoke-Expression "$package\DB\Build\tools\SqlCompare\SQLCompare.exe /ignoreParserErrors /Options:IgnoreComments,IgnoreDatabaseAndServerName /Scripts1:""$package\DB"" /server2:$DatabaseServer /db2:$Database /username2:$user /password2:$pass /Include:identical /Force /ScriptFile:$package\SchemaSyncScript-Batch.sql"
 Invoke-Expression "$package\DB\Build\tools\SqlCompare\SQLCompare.exe /ignoreParserErrors /Options:Default,IgnoreComments /Scripts1:""$package\DB"" /server2:$DatabaseServer /db2:$Database /username2:$user /password2:$pass /Include:identical /Force /ScriptFile:$package\SchemaSyncScript-Batch.sql"
 Get-Content "$package\SchemaSyncScript-Batch.sql" | ForEach-Object { $_ -replace "SET TRANSACTION ISOLATION LEVEL SERIALIZABLE", "SET TRANSACTION ISOLATION LEVEL READ COMMITTED" } | Set-Content "$package\SchemaSyncScript-Batch-mod.sql"

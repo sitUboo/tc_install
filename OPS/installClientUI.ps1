@@ -11,6 +11,7 @@ $configFile
 $opsProjects = @{}
 $omsProjects = @{}
 $clientProjects = @{}
+$bankuiProjects = @{}
 
 function ExtractPackage($package,$path){
     import-module Pscx
@@ -68,7 +69,13 @@ function InitProjects(){
   $url = "$baseurl/httpAuth/app/rest/projects/id:project5";
   $result = [xml] $webclient.DownloadString($url)
   foreach ($buildType in ($result.project.buildTypes.buildType)){
+    Write-Host $buildType.name $buildType.id
     $clientProjects[$buildType.name] = $buildType.id
+  }
+  $url = "$baseurl/httpAuth/app/rest/projects/id:project8";
+  $result = [xml] $webclient.DownloadString($url)
+  foreach ($buildType in ($result.project.buildTypes.buildType)){
+    $bankuiProjects[$buildType.name] = $buildType.id
   }
 }
 
@@ -118,6 +125,10 @@ function getOmsProjectId($str){
 
 function getClientProjectId($str){
   return $clientProjects[$str];
+}
+
+function getBankUIProjectId($str){
+  return $bankuiProjects[$str];
 }
 
 function ValidateAndLoadWebAdminModule() {
@@ -298,6 +309,6 @@ UnInstall
 ExtractPackage $package".$buildNum.zip" "$packageRoot"
 Install
 
-Start-WebSite -Name $siteName
+#Start-WebSite -Name $siteName
 Write-Output "Deploy Complete"
 
