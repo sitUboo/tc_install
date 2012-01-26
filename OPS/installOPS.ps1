@@ -187,7 +187,8 @@ function UpdateConfiguration(){
     $portalConnStr = $webconfig.configuration.connectionStrings.add | where-object { $_.name -eq "Portal" }
     $cstr = "Data Source="+$hash['portal.db.instance']+";Initial Catalog="+$hash['portal.db']+";Persist Security Info=True;User ID="+$hash['ops.db.username']+";Password="+$hash['ops.db.password']+""
     $portalConnStr.SetAttribute("connectionString",$cstr)
-	  if($hash['installMode'] -eq 'debug'){
+	  if($hash['compression'] -eq 'off'){
+      Write-Host "Removing compression from web.config"
 		  $node = $webconfig.SelectSingleNode('//soapExtensionTypes/add[@type="Cardlytics.Framework.Web.WSCompressionExtension, Cardlytics.Framework"]')
 		  $node.ParentNode.RemoveChild($node)
 	  }
@@ -212,7 +213,7 @@ function UpdateConfiguration(){
     [void]$conditionsElem.AppendChild($addElem)
     $actionElem = $webconfig.CreateElement("action")
     $actionElem.setAttribute("type","Rewrite")
-    $actionElem.setAttribute("url","http://"+$hash['ops.host']+':'+$hash['ops.site.port']+"/public{R:2}")
+    $actionElem.setAttribute("url","http://"+$hash['ops.host']+':'+$hash['ops.site.port']+"/public/{R:2}")
     [void]$ruleElem.AppendChild($actionElem)
 	  $webconfig.save("$packageRoot\Web.config");
 }
@@ -229,6 +230,7 @@ $buildId = getBuildId $btnum $hash['pinned']
 $packageAddress = "http://vmteambuildserver/repository/download/$btnum/$buildId"+":id/$project.{build.number}.zip?guest=1";
 $current_path = resolve-path "."
 $packageRoot = "$current_path\$package"
+Write-Host "Downloading $project.$buildNum.zip"
 (new-object net.webclient).DownloadFile($packageAddress,"$current_path\$package.$buildNum.zip")
 
 ValidateAndLoadWebAdminModule

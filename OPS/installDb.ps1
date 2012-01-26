@@ -360,6 +360,11 @@ Get-Content "$package\SchemaSyncScript-Batch.sql" | ForEach-Object { $_ -replace
 # execute change set
 Invoke-Expression "sqlcmd.exe -S $DatabaseServer -U $user -P $pass -d $Database -i $package\SchemaSyncScript-Batch-mod.sql"
 
+foreach ( $sqlfile in (Get-ChildItem "$package\DB\Data\dbo.*.sql")){
+  Write-Host "Applying file $sqlfile"
+  Invoke-Expression "sqlcmd.exe -S $DatabaseServer -U $user -P $pass -d $Database -i $sqlfile"
+}
+
 Install-SyncDtsPackage
 Install-EtlFItoStageDtsPackage
 Install-EtlStagetoDboDtsPackage

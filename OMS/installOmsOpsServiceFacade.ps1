@@ -141,8 +141,8 @@ function UpdateConfiguration(){
     foreach($element in ($config.configuration.applicationSettings."Cardlytics.Oms.OpsServiceFacade.Properties.Settings".setting | where-object { $_.name -match "Cardlytics_Oms_OpsServiceFacade" })){
       $element.value = "http://"+$hash['ops.host'] +":" + $hash['ops.site.port']+ $hash['oms.service']
     }
-    if($hash['installMode'] -eq 'debug'){
-      $node = $webconfig.SelectSingleNode('//soapExtensionTypes/add[@type="Cardlytics.Framework.Web.WSCompressionExtension, Cardlytics.Framework"]')
+    if($hash['compression'] -eq 'off'){
+      $node = $config.SelectSingleNode('//soapExtensionTypes/add[@type="Cardlytics.Framework.Web.WSCompressionExtension, Cardlytics.Framework"]')
       $node.ParentNode.RemoveChild($node)
     }
     $config.save("$packageRoot\Web.config");
@@ -151,7 +151,7 @@ function UpdateConfiguration(){
 function UnInstall() {
     $name = $hash['cling.site.name']
     foreach ($obj in (Get-ChildItem "IIS:\Sites" | Where-Object { $_.name -eq "$name" })){
-        Write-Host "Uninstalling $obj.name"
+        Write-Host "Uninstalling $name"
         if($obj.status -eq 'Started'){
             Stop-WebSite -Name $name
         }

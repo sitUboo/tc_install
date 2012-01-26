@@ -91,12 +91,20 @@ function Init(){
 }
 
 function getBuildId($configId, $pin_status){
-  $address = "http://vmteambuildserver/app/rest/buildTypes/id:$configId/builds/status:SUCCESS,pinned:$pin_status/id?guest=1";
+  if($pin_status -eq $true){
+    $address = "http://vmteambuildserver/app/rest/buildTypes/id:$configId/builds/status:SUCCESS,pinned:$pin_status/id?guest=1";
+  }else{
+    $address = "http://vmteambuildserver/app/rest/buildTypes/id:$configId/builds/status:SUCCESS/id?guest=1";
+  }
   return (new-object net.webclient).DownloadString($address);
 }
 
 function getBuildNum($configId, $pin_status){
-  $address = "http://vmteambuildserver/app/rest/buildTypes/id:$configId/builds/status:SUCCESS,pinned:$pin_status/number?guest=1";
+  if($pin_status -eq $true){
+    $address = "http://vmteambuildserver/app/rest/buildTypes/id:$configId/builds/status:SUCCESS,pinned:$pin_status/number?guest=1";
+  }else{
+    $address = "http://vmteambuildserver/app/rest/buildTypes/id:$configId/builds/status:SUCCESS/number?guest=1";
+  }
   return (new-object net.webclient).DownloadString($address);
 }
 
@@ -136,11 +144,11 @@ $package = "OMS-DB"
 $btnum = getOmsProjectId $project
 $buildNum = getBuildNum $btnum $hash['pinned']
 $buildId = getBuildId $btnum $hash['pinned']
-Write-Host "Installation of $package"
 $packageAddress = "http://vmteambuildserver/repository/download/$btnum/$buildId"+":id/$package.{build.number}.nupkg?guest=1";
 $current_path = resolve-path "."
 $packageRoot += "$current_path\$package\content"
 (new-object net.webclient).DownloadFile($packageAddress,"$current_path\$package`_$buildNum.zip")
+Write-Host "Downloading $package`_$buildNum.zip"
 
 ExtractPackage $package"_$buildNum.zip" "$current_path\$package"
 $dbinstance = $hash['oms.db.instance']
@@ -149,6 +157,5 @@ $user = $hash['oms.db.username']
 $pass = $hash['oms.db.password']
 $output = Invoke-Expression "$package\tools\SqlCompare\SQLCompare.exe /Scripts1:""$package\content"" /server2:$dbinstance /db2:$db /username2:$user /password2:$pass /sync /Include:identical /Force /Verbose /ScriptFile:$package\SchemaSyncScript.sql"
 Write-Output $output
-CheckLogs
 Remove-Item $package"_$buildNum.zip"
 exit $LASTEXITCODE

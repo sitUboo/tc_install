@@ -178,8 +178,8 @@ $package = "Cardlytics.Oms.Web"
 $btnum = getOmsProjectId $project
 $buildNum = getBuildNum $btnum $hash['pinned']
 $buildId = getBuildId $btnum $hash['pinned']
-Write-Host "Installation of $package"
 $mode = $hash['release.mode']
+Write-Host "Installation of $package.$mode.$buildNum.zip"
 $packageAddress = "http://vmteambuildserver/repository/download/$btnum/$buildId"+":id/$package.$mode.{build.number}.zip?guest=1";
 $current_path = resolve-path "."
 (new-object net.webclient).DownloadFile($packageAddress,"$current_path\$package.$mode.$buildNum.zip")

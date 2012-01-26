@@ -137,6 +137,7 @@ $package = $project
 $btnum = getBankUIProjectId $project
 $buildNum = getBuildNum $btnum $hash['pinned']
 $buildId = getBuildId $btnum $hash['pinned']
+# QA needs the debug build even in a stable environment
 $mode = 'Debug'#$hash['release.mode']
 $packageAddress = "http://vmteambuildserver/repository/download/$btnum/$buildId"+":id/$package.{build.number}-$mode.zip?guest=1";
 $current_path = resolve-path "."
