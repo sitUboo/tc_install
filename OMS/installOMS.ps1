@@ -120,6 +120,19 @@ function getClientProjectId($str){
   return $clientProjects[$str];
 }
 
+function validateOms() {
+  $address = "http://"+$hash['oms.host']+":"+$hash['oms.site.port']+"/Auth.svc"
+  Write-Host "Address " $address
+  $page = (new-object net.webclient).DownloadString($address)
+  if($page.contains("You have created a service")){
+    Write-Host "Success: Oms is up."
+    exit 0;
+  }else{
+    Write-Host "Error: Unable to invoke auth.svc page"
+    exit -1;
+  }
+}
+
 function UnInstall() {
     $name = $hash['oms.site.name']
     foreach ($obj in (Get-ChildItem "IIS:\Sites" | Where-Object { $_.name -eq "$name" })){
@@ -191,5 +204,6 @@ ExtractPackage $package".$mode.$buildNum.zip" "$packageRoot"
 UpdateConfiguration
 Install
 Remove-Item $package".$mode.$buildNum.zip"
+validateOms
 Write-Host "Deploy Complete"
 
