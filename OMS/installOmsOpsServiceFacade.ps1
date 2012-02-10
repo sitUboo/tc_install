@@ -156,31 +156,35 @@ function UnInstall() {
             Stop-WebSite -Name $name
         }
         Remove-WebSite -Name $obj.name
-#        Write-Host "Removing Site Files"
-#        if(Test-Path ($obj.physicalPath)){
-#            Remove-Item $obj.physicalPath -recurse -force -exclude ClingTrace.svclog
-#        }
+        Write-Host "Removing Site Files"
+        if(Test-Path ($obj.physicalPath)){
+          get-childitem $obj.physicalPath -include *.* -recurse | remove-item -force -exclude "*.svclog"
+          #Remove-Item $obj.physicalPath -recurse -force -exclude ClingTrace.svclog
+        }
     }
 }
 
-Set-Location "C:\tc_install\OMS"
-$script:ErrorActionPreference = "Stop"
-$hash = Init $configFile
-$package = "Cardlytics.Oms.OpsServiceFacade"
-$btnum = getOmsProjectId $project
-$buildNum = getBuildNum $btnum $hash['pinned']
-$buildId = getBuildId $btnum $hash['pinned']
-$mode = $hash['release.mode']
-$packageAddress = "http://vmteambuildserver/repository/download/$btnum/$buildId"+":id/$package.$mode.{build.number}.zip?guest=1"
-$current_path = resolve-path "."
-(new-object net.webclient).DownloadFile($packageAddress,"$current_path\$package.$mode.$buildNum.zip")
-ValidateAndLoadWebAdminModule
-UnInstall
-$packageRoot = "$current_path\"
-$packageRoot += $hash['cling.site.name']
-ExtractPackage $package".$mode.$buildNum.zip" "$packageRoot"
-UpdateConfiguration
-Install
-Remove-Item $package".$mode.$buildNum.zip"
-Write-Output "Deploy Complete"
-
+try{
+  Set-Location "C:\tc_install\OMS"
+  #$script:ErrorActionPreference = "Stop"
+  $hash = Init $configFile
+  $package = "Cardlytics.Oms.OpsServiceFacade"
+  $btnum = getOmsProjectId $project
+  $buildNum = getBuildNum $btnum $hash['pinned']
+  $buildId = getBuildId $btnum $hash['pinned']
+  $mode = $hash['release.mode']
+  $packageAddress = "http://vmteambuildserver/repository/download/$btnum/$buildId"+":id/$package.$mode.{build.number}.zip?guest=1"
+  $current_path = resolve-path "."
+  (new-object net.webclient).DownloadFile($packageAddress,"$current_path\$package.$mode.$buildNum.zip")
+  ValidateAndLoadWebAdminModule
+  UnInstall
+  $packageRoot = "$current_path\"
+  $packageRoot += $hash['cling.site.name']
+  ExtractPackage $package".$mode.$buildNum.zip" "$packageRoot"
+  UpdateConfiguration
+  Install
+  Remove-Item $package".$mode.$buildNum.zip"
+  Write-Output "Deploy Complete"
+}catch{
+  throw "Deployment Error"
+}

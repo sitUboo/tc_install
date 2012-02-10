@@ -141,22 +141,25 @@ function UnInstall(){
     }
 }
 
-
-Set-Location "C:\tc_install\OPS"
-$hash = Init
-$script:ErrorActionPreference = "Stop"
-$package = "Cardlytics.OPS.ServiceManager"
-$btnum = getOpsProjectId $project
-$buildNum = getBuildNum $btnum $hash['pinned']
-$buildId = getBuildId $btnum $hash['pinned']
-$packageAddress = "http://vmteambuildserver/repository/download/$btnum/$buildId"+":id/$package.{build.number}.zip?guest=1";
-$current_path = resolve-path "."
-$packageRoot += "$current_path\$package"
-(new-object net.webclient).DownloadFile($packageAddress,"$current_path\$package.$buildNum.zip")
-
-UnInstall
-ExtractPackage $package".$buildNum.zip" "$packageRoot"
-UpdateConfiguration
-Install
-Remove-Item $package".$buildNum.zip"
-Write-Output "Deploy Complete"
+try {
+  Set-Location "C:\tc_install\OPS"
+  $hash = Init
+  #$script:ErrorActionPreference = "Stop"
+  $package = "Cardlytics.OPS.ServiceManager"
+  $btnum = getOpsProjectId $project
+  $buildNum = getBuildNum $btnum $hash['pinned']
+  $buildId = getBuildId $btnum $hash['pinned']
+  $packageAddress = "http://vmteambuildserver/repository/download/$btnum/$buildId"+":id/$package.{build.number}.zip?guest=1";
+  $current_path = resolve-path "."
+  $packageRoot += "$current_path\$package"
+  (new-object net.webclient).DownloadFile($packageAddress,"$current_path\$package.$buildNum.zip")
+  
+  UnInstall
+  ExtractPackage $package".$buildNum.zip" "$packageRoot"
+  UpdateConfiguration
+  Install
+  Remove-Item $package".$buildNum.zip"
+  Write-Output "Deploy Complete"
+}catch{
+  throw "Deployment Error";
+}

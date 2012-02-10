@@ -86,7 +86,7 @@ function Init(){
         $configFile = "local.properties"
         if(-not (Test-Path ".\$configFile")){
            Write-Host "Unable to load any $configFile. Exiting."
-           Exit -1;
+           throw "Deployment Error";
         }
     }
     Write-Host "Loading $configFile"
@@ -152,7 +152,9 @@ function UnInstall() {
         Remove-WebSite -Name $obj.name
         Write-Host "Removing Site Files"  $obj.physicalPath
         if(Test-Path ($obj.physicalPath)){
-            Remove-Item $obj.physicalPath -recurse -force 
+# bug http://serverfault.com/questions/199921/powershell-remove-force
+           #Remove-Item $obj.physicalPath -recurse -force 
+          get-childitem $obj.physicalPath -include *.* -recurse | remove-item
         }
     }
 	if(Get-ChildItem IIS:\AppPools | Where-Object { $_.name -eq "$name" }) {
@@ -218,26 +220,30 @@ function UpdateConfiguration(){
 	  $webconfig.save("$packageRoot\Web.config");
 }
 
-Set-Location "C:\tc_install\OPS"
-$script:ErrorActionPreference = "Stop"
-$hash = Init
-$package = $hash['ops.site.name']
-$btnum = getOpsProjectId $project
-$buildNum = getBuildNum $btnum $hash['pinned']
-$buildId = getBuildId $btnum $hash['pinned']
-#OPS is not doing multiple build configurations yet
-#$mode = $hash['release.mode']
-$packageAddress = "http://vmteambuildserver/repository/download/$btnum/$buildId"+":id/$project.{build.number}.zip?guest=1";
-$current_path = resolve-path "."
-$packageRoot = "$current_path\$package"
-Write-Host "Downloading $project.$buildNum.zip"
-(new-object net.webclient).DownloadFile($packageAddress,"$current_path\$package.$buildNum.zip")
-
-ValidateAndLoadWebAdminModule
-UnInstall
-ExtractPackage $package".$buildNum.zip" "$packageRoot"
-UpdateConfiguration
-Install
-Remove-Item $package".$buildNum.zip"
-Write-Output "Deploy Complete"
+try {
+  Set-Location "C:\tc_install\OPS"
+  #$script:ErrorActionPreference = "Stop"
+  $hash = Init
+  $package = $hash['ops.site.name']
+  $btnum = getOpsProjectId $project
+  $buildNum = getBuildNum $btnum $hash['pinned']
+  $buildId = getBuildId $btnum $hash['pinned']
+  #OPS is not doing multiple build configurations yet
+  #$mode = $hash['release.mode']
+  $packageAddress = "http://vmteambuildserver/repository/download/$btnum/$buildId"+":id/$project.{build.number}.zip?guest=1";
+  $current_path = resolve-path "."
+  $packageRoot = "$current_path\$package"
+  Write-Host "Downloading $project.$buildNum.zip"
+  (new-object net.webclient).DownloadFile($packageAddress,"$current_path\$package.$buildNum.zip")
+  
+  ValidateAndLoadWebAdminModule
+  UnInstall
+  ExtractPackage $package".$buildNum.zip" "$packageRoot"
+  UpdateConfiguration
+  Install
+  Remove-Item $package".$buildNum.zip"
+  Write-Output "Deploy Complete"
+}catch{
+  throw "Deployment Error";
+}
 

@@ -167,34 +167,38 @@ function StartService($service){
     Invoke-Expression "sc.exe start `"$service`""
 }
 
-Set-Location "C:\tc_install\OMS"
-$script:ErrorActionPreference = "Stop"
-$hash = Init $configFile
-$package = "Cardlytics.QueueService"
-$btnum = getOmsProjectId $project
-$buildNum = getBuildNum $btnum $hash['pinned']
-$buildId = getBuildId $btnum $hash['pinned']
-$mode = $hash['release.mode']
-$packageAddress = "http://vmteambuildserver/repository/download/$btnum/$buildId"+":id/$package.$mode.{build.number}.zip?guest=1"
-$current_path = resolve-path "."
-Write-Host "Downloading $package.$mode.$buildNum.zip"
-(new-object net.webclient).DownloadFile($packageAddress,"$current_path\$package.$mode.$buildNum.zip")
-    
-if(-not(Test-Path 'C:\Windows\Microsoft.NET\Framework64\v4.0.30319\InstallUtil.exe')) {
-  Write-Host "Unable to confirm expected installUtil program.";
-}else{
-  $env:path = $env:Path + ";C:\Windows\Microsoft.NET\Framework64\v4.0.30319";
+try{
+  Set-Location "C:\tc_install\OMS"
+  #$script:ErrorActionPreference = "Stop"
+  $hash = Init $configFile
+  $package = "Cardlytics.QueueService"
+  $btnum = getOmsProjectId $project
+  $buildNum = getBuildNum $btnum $hash['pinned']
+  $buildId = getBuildId $btnum $hash['pinned']
+  $mode = $hash['release.mode']
+  $packageAddress = "http://vmteambuildserver/repository/download/$btnum/$buildId"+":id/$package.$mode.{build.number}.zip?guest=1"
+  $current_path = resolve-path "."
+  Write-Host "Downloading $package.$mode.$buildNum.zip"
+  (new-object net.webclient).DownloadFile($packageAddress,"$current_path\$package.$mode.$buildNum.zip")
+  
+  if(-not(Test-Path 'C:\Windows\Microsoft.NET\Framework64\v4.0.30319\InstallUtil.exe')) {
+    Write-Host "Unable to confirm expected installUtil program.";
+  }else{
+    $env:path = $env:Path + ";C:\Windows\Microsoft.NET\Framework64\v4.0.30319";
+  }
+  
+  foreach ($service in ($hash['queue.services'].split(','))){
+    $service_dir = $service.replace(" ","_");
+    $packageRoot = "$current_path\$service_dir"
+    UnInstall $service $packageRoot
+    ExtractPackage $package".$mode.$buildNum.zip" "$current_path\$service_dir"
+    UpdateConfiguration $service $service_dir
+    Install $packageRoot
+    StartService $service
+  }
+  Remove-Item $package".$mode.$buildNum.zip"
+  Write-Output "Deploy Complete"
+}catch{
+  throw "Deployment Error"
 }
-
-foreach ($service in ($hash['queue.services'].split(','))){
-  $service_dir = $service.replace(" ","_");
-  $packageRoot = "$current_path\$service_dir"
-  UnInstall $service $packageRoot 
-  ExtractPackage $package".$mode.$buildNum.zip" "$current_path\$service_dir"
-  UpdateConfiguration $service $service_dir
-  Install $packageRoot
-  StartService $service
-}
-Remove-Item $package".$mode.$buildNum.zip"
-Write-Output "Deploy Complete"
 

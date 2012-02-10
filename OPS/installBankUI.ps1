@@ -130,23 +130,27 @@ function getBankUIProjectId($str){
   return $bankuiProjects[$str];
 }
 
-Set-Location "C:\tc_install\OPS"
-$script:ErrorActionPreference = "Stop"
-$hash = Init
-$package = $project
-$btnum = getBankUIProjectId $project
-$buildNum = getBuildNum $btnum $hash['pinned']
-$buildId = getBuildId $btnum $hash['pinned']
-# QA needs the debug build even in a stable environment
-$mode = 'Debug'#$hash['release.mode']
-$packageAddress = "http://vmteambuildserver/repository/download/$btnum/$buildId"+":id/$package.{build.number}-$mode.zip?guest=1";
-$current_path = resolve-path "."
-$packageRoot = "$current_path\"+$hash['ops.site.name']
-(new-object net.webclient).DownloadFile($packageAddress,"$current_path\$package.$buildNum.zip")
-
-Write-Host "Deploying Bank UI..."
-Write-Host "Extracting $package.$buildNum.zip to $packageRoot"
-ExtractPackage $package".$buildNum.zip" "$packageRoot"
-Remove-Item $package".$buildNum.zip"
-Write-Output "Deploy Complete"
+try {
+  Set-Location "C:\tc_install\OPS"
+  #$script:ErrorActionPreference = "Stop"
+  $hash = Init
+  $package = $project
+  $btnum = getBankUIProjectId $project
+  $buildNum = getBuildNum $btnum $hash['pinned']
+  $buildId = getBuildId $btnum $hash['pinned']
+  # QA needs the debug build even in a stable environment
+  $mode = 'Debug'#$hash['release.mode']
+  $packageAddress = "http://vmteambuildserver/repository/download/$btnum/$buildId"+":id/$package.{build.number}-$mode.zip?guest=1";
+  $current_path = resolve-path "."
+  $packageRoot = "$current_path\"+$hash['ops.site.name']
+  (new-object net.webclient).DownloadFile($packageAddress,"$current_path\$package.$buildNum.zip")
+  
+  Write-Host "Deploying Bank UI..."
+  Write-Host "Extracting $package.$buildNum.zip to $packageRoot"
+  ExtractPackage $package".$buildNum.zip" "$packageRoot"
+  Remove-Item $package".$buildNum.zip"
+  Write-Output "Deploy Complete"
+}catch{
+  throw "Deployment Error";
+}
 

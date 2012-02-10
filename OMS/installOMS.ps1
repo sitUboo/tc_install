@@ -120,7 +120,7 @@ function getClientProjectId($str){
   return $clientProjects[$str];
 }
 
-function validateOms() {
+function ValidateOms() {
   $address = "http://"+$hash['oms.host']+":"+$hash['oms.site.port']+"/Auth.svc"
   Write-Host "Address " $address
   $page = (new-object net.webclient).DownloadString($address)
@@ -184,26 +184,30 @@ function UpdateConfiguration(){
     $config.save("$packageRoot\Web.config");
 }
 
-Set-Location "C:\tc_install\OMS"
-$script:ErrorActionPreference = "Stop"
-$hash = Init $configFile
-$package = "Cardlytics.Oms.Web"
-$btnum = getOmsProjectId $project
-$buildNum = getBuildNum $btnum $hash['pinned']
-$buildId = getBuildId $btnum $hash['pinned']
-$mode = $hash['release.mode']
-Write-Host "Installation of $package.$mode.$buildNum.zip"
-$packageAddress = "http://vmteambuildserver/repository/download/$btnum/$buildId"+":id/$package.$mode.{build.number}.zip?guest=1";
-$current_path = resolve-path "."
-(new-object net.webclient).DownloadFile($packageAddress,"$current_path\$package.$mode.$buildNum.zip")
-ValidateAndLoadWebAdminModule
-UnInstall
-$packageRoot = "$current_path\"
-$packageRoot += $hash['oms.site.name']
-ExtractPackage $package".$mode.$buildNum.zip" "$packageRoot"
-UpdateConfiguration
-Install
-Remove-Item $package".$mode.$buildNum.zip"
-validateOms
-Write-Host "Deploy Complete"
+try{
+  Set-Location "C:\tc_install\OMS"
+  #$script:ErrorActionPreference = "Stop"
+  $hash = Init $configFile
+  $package = "Cardlytics.Oms.Web"
+  $btnum = getOmsProjectId $project
+  $buildNum = getBuildNum $btnum $hash['pinned']
+  $buildId = getBuildId $btnum $hash['pinned']
+  $mode = $hash['release.mode']
+  Write-Host "Installation of $package.$mode.$buildNum.zip"
+  $packageAddress = "http://vmteambuildserver/repository/download/$btnum/$buildId"+":id/$package.$mode.{build.number}.zip?guest=1";
+  $current_path = resolve-path "."
+  (new-object net.webclient).DownloadFile($packageAddress,"$current_path\$package.$mode.$buildNum.zip")
+  ValidateAndLoadWebAdminModule
+  UnInstall
+  $packageRoot = "$current_path\"
+  $packageRoot += $hash['oms.site.name']
+  ExtractPackage $package".$mode.$buildNum.zip" "$packageRoot"
+  UpdateConfiguration
+  Install
+  Remove-Item $package".$mode.$buildNum.zip"
+  ValidateOms
+  Write-Host "Deploy Complete"
+}catch{
+  throw "Deployment Error"
+}
 
