@@ -65,11 +65,12 @@ function InitProjects(){
   foreach ($buildType in ($result.project.buildTypes.buildType)){
     $omsProjects[$buildType.name] = $buildType.id
   }
-  $url = "$baseurl/httpAuth/app/rest/projects/id:project5";
-  $result = [xml] $webclient.DownloadString($url)
-  foreach ($buildType in ($result.project.buildTypes.buildType)){
-    $clientProjects[$buildType.name] = $buildType.id
-  }
+ # We killed the client ui app
+#  $url = "$baseurl/httpAuth/app/rest/projects/id:project5";
+#  $result = [xml] $webclient.DownloadString($url)
+#  foreach ($buildType in ($result.project.buildTypes.buildType)){
+#    $clientProjects[$buildType.name] = $buildType.id
+#  }
 }
 
 function Init(){
@@ -130,6 +131,15 @@ function UpdateConfiguration(){
     $opsConnStr = $config.configuration.connectionStrings.add | where-object { $_.name -eq "Ops" }
     $cstr = "Data Source="+$hash['batch.db.instance']+";Initial Catalog="+$hash['batch.db']+";User ID="+$hash['opsrpt.db.username']+";Password="+$hash['opsrpt.db.password']+""
     $opsConnStr.SetAttribute("connectionString",$cstr)
+    if($hash.ContainsKey('clqms.interval')){
+      $intervalElement = $config.SelectSingleNode('//Interval')
+      $intervalElement.'#text' = $hash['clqms.interval']
+    }
+    if($hash.ContainsKey('clqms.log.level')){
+      foreach ($element in $config.SelectSingleNode('//LogService/File[@enabled="1"]')){
+        $element.'#text' = $hash['clqms.log.level']
+      }
+    }
     $config.save("$packageRoot\$file");
 }
 
@@ -141,7 +151,7 @@ function UnInstall(){
     }
 }
 
-try {
+#try {
   Set-Location "C:\tc_install\OPS"
   $hash = Init
   #$script:ErrorActionPreference = "Stop"
@@ -152,14 +162,14 @@ try {
   $packageAddress = "http://vmteambuildserver/repository/download/$btnum/$buildId"+":id/$package.{build.number}.zip?guest=1";
   $current_path = resolve-path "."
   $packageRoot += "$current_path\$package"
-  (new-object net.webclient).DownloadFile($packageAddress,"$current_path\$package.$buildNum.zip")
+#  (new-object net.webclient).DownloadFile($packageAddress,"$current_path\$package.$buildNum.zip")
   
-  UnInstall
-  ExtractPackage $package".$buildNum.zip" "$packageRoot"
+#  UnInstall
+#  ExtractPackage $package".$buildNum.zip" "$packageRoot"
   UpdateConfiguration
-  Install
-  Remove-Item $package".$buildNum.zip"
+#  Install
+#  Remove-Item $package".$buildNum.zip"
   Write-Output "Deploy Complete"
-}catch{
-  throw "Deployment Error";
-}
+#}catch{
+#  throw "Deployment Error";
+#}

@@ -65,11 +65,12 @@ function InitProjects(){
   foreach ($buildType in ($result.project.buildTypes.buildType)){
     $omsProjects[$buildType.name] = $buildType.id
   }
-  $url = "$baseurl/httpAuth/app/rest/projects/id:project5";
-  $result = [xml] $webclient.DownloadString($url)
-  foreach ($buildType in ($result.project.buildTypes.buildType)){
-    $clientProjects[$buildType.name] = $buildType.id
-  }
+#we killed the clientui app
+#  $url = "$baseurl/httpAuth/app/rest/projects/id:project5";
+#  $result = [xml] $webclient.DownloadString($url)
+#  foreach ($buildType in ($result.project.buildTypes.buildType)){
+#    $clientProjects[$buildType.name] = $buildType.id
+#  }
 }
 
 function Init(){

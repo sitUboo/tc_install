@@ -72,11 +72,12 @@ function InitProjects(){
   foreach ($buildType in ($result.project.buildTypes.buildType)){
     $omsProjects[$buildType.name] = $buildType.id
   }
-  $url = "$baseurl/httpAuth/app/rest/projects/id:project5";
-  $result = [xml] $webclient.DownloadString($url)
-  foreach ($buildType in ($result.project.buildTypes.buildType)){
-    $clientProjects[$buildType.name] = $buildType.id
-  }
+# We killed the client ui app
+#  $url = "$baseurl/httpAuth/app/rest/projects/id:project5";
+#  $result = [xml] $webclient.DownloadString($url)
+#  foreach ($buildType in ($result.project.buildTypes.buildType)){
+#    $clientProjects[$buildType.name] = $buildType.id
+#  }
 }
 
 function Init(){
@@ -113,19 +114,6 @@ function getBuildNum($configId, $pin_status){
     $address = "http://vmteambuildserver/app/rest/buildTypes/id:$configId/builds/status:SUCCESS/number?guest=1";
   }
   return (new-object net.webclient).DownloadString($address);
-}
-
-function getChanges($configId, $buildNum, $buildId){
-  $address = "http://vmteambuildserver/app/rest/builds/buildType:$configId`?guest=1"
-  $xml = [xml](new-object net.webclient).DownloadString($address)
-  $address = "http://vmteambuildserver/httpAuth" + $xml.build.changes.href
-# Now for some reason we need auth
-  $wc = new-object system.net.webclient
-  $wc.credentials = new-object system.net.networkcredential("sdeal", "Jannina1111")
-  $xml = [xml] $wc.DownloadString($address)
-  $url = "http://vmteambuildserver" + $xml.changes.change.href 
-  $result  = [xml]$wc.DownloadString($url);
-  Write-Host $result.change.comment
 }
 
 function getOpsProjectId($str){
@@ -241,8 +229,6 @@ try {
   $btnum = getOpsProjectId $project
   $buildNum = getBuildNum $btnum $hash['pinned']
   $buildId = getBuildId $btnum $hash['pinned']
-  getChanges $btnum $buildNum $buildId
-  exit 0;
   #OPS is not doing multiple build configurations yet
   #$mode = $hash['release.mode']
   $packageAddress = "http://vmteambuildserver/repository/download/$btnum/$buildId"+":id/$project.{build.number}.zip?guest=1";

@@ -65,11 +65,12 @@ function InitProjects(){
   foreach ($buildType in ($result.project.buildTypes.buildType)){
     $omsProjects[$buildType.name] = $buildType.id
   }
-  $url = "$baseurl/httpAuth/app/rest/projects/id:project5";
-  $result = [xml] $webclient.DownloadString($url)
-  foreach ($buildType in ($result.project.buildTypes.buildType)){
-    $clientProjects[$buildType.name] = $buildType.id
-  }
+ # We killed the client ui app
+#  $url = "$baseurl/httpAuth/app/rest/projects/id:project5";
+#  $result = [xml] $webclient.DownloadString($url)
+#  foreach ($buildType in ($result.project.buildTypes.buildType)){
+#    $clientProjects[$buildType.name] = $buildType.id
+#  }
 }
 
 function Init(){
@@ -275,7 +276,9 @@ function Install-GenerateRewardsFileDtsPackage {
     
     $xml = [xml](get-content $packageConfigPath)
 
-    Set-DtsPackageParams -XmlConfig $xml -ParamHash @{ "\Package.Variables[User::Credit_File_Name].Properties[Value]" = $hash['credit.file.name'];
+    Set-DtsPackageParams -XmlConfig $xml -ParamHash @{ "\Package.Connections[OPSBATCH].Properties[InitialCatalog]" = $Database;
+                                                        "\Package.Connections[OPSBATCH].Properties[ServerName]" = $DatabaseServer;
+                                                        "\Package.Variables[User::Credit_File_Name].Properties[Value]" = $hash['credit.file.name'];
                                                         "\Package.Variables[User::Debit_File_Name].Properties[Value]" = $hash['debit.file.name'];
                                                         "\Package.Variables[User::Output_File_Path].Properties[Value]" = $hash['output.file.path'];
                                                      }
@@ -298,7 +301,7 @@ function DbBackup{
   Invoke-Expression "sqlcmd.exe -S $DatabaseServer -U $user -P $pass -d master -Q `"BACKUP DATABASE [$Database] to DISK =N'$file' WITH NAME = N'$name', NOSKIP, STATS = 10, NOFORMAT`""
 }
 
-Set-Location "C:\tc_install\OPS"
+Set-Location "E:\tc_install\OPS"
 $script:ErrorActionPreference = "Stop"
 $hash = Init
 $packages= @("OPS-Import-DB","OPS-Portal-DB","OPS-Batch-DB")
