@@ -135,11 +135,11 @@ function UpdateConfiguration(){
       $intervalElement = $config.SelectSingleNode('//Interval')
       $intervalElement.'#text' = $hash['clqms.interval']
     }
-    if($hash.ContainsKey('clqms.log.level')){
-      foreach ($element in $config.SelectSingleNode('//LogService/File[@enabled="1"]')){
-        $element.'#text' = $hash['clqms.log.level']
-      }
-    }
+#    if($hash.ContainsKey('clqms.log.level')){
+#      foreach ($element in $config.SelectSingleNode('//LogService/File[@enabled="1"]')){
+#        $element.'#text' = $hash['clqms.log.level']
+#      }
+#    }
     $config.save("$packageRoot\$file");
 }
 
