@@ -133,7 +133,6 @@ function Set-DtsPackageParams {
         $Value = $ParamHash.$_;
 
         $configValueNode = $XmlConfig | Select-Xml "//Configuration[@Path=`"$PropertyPath`"]"
-        
         $configValueNode.Node.ConfiguredValue = $Value.ToString()
     }
 }
@@ -276,9 +275,7 @@ function Install-GenerateRewardsFileDtsPackage {
     
     $xml = [xml](get-content $packageConfigPath)
 
-    Set-DtsPackageParams -XmlConfig $xml -ParamHash @{ "\Package.Connections[OPSBATCH].Properties[InitialCatalog]" = $Database;
-                                                        "\Package.Connections[OPSBATCH].Properties[ServerName]" = $DatabaseServer;
-                                                        "\Package.Variables[User::Credit_File_Name].Properties[Value]" = $hash['credit.file.name'];
+    Set-DtsPackageParams -XmlConfig $xml -ParamHash @{ "\Package.Variables[User::Credit_File_Name].Properties[Value]" = $hash['credit.file.name'];
                                                         "\Package.Variables[User::Debit_File_Name].Properties[Value]" = $hash['debit.file.name'];
                                                         "\Package.Variables[User::Output_File_Path].Properties[Value]" = $hash['output.file.path'];
                                                      }
