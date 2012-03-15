@@ -135,11 +135,10 @@ function UpdateConfiguration(){
       $intervalElement = $config.SelectSingleNode('//Interval')
       $intervalElement.'#text' = $hash['clqms.interval']
     }
-#    if($hash.ContainsKey('clqms.log.level')){
-#      foreach ($element in $config.SelectSingleNode('//LogService/File[@enabled="1"]')){
-#        $element.'#text' = $hash['clqms.log.level']
-#      }
-#    }
+    if($hash.ContainsKey('clqms.log.level')){
+      $logLevel = $config.SelectSingleNode('//LogLevel')
+      $logLevel.'#text' = $hash['clqms.log.level']
+    }
     $config.save("$packageRoot\$file");
 }
 
@@ -151,7 +150,7 @@ function UnInstall(){
     }
 }
 
-#try {
+try {
   Set-Location "C:\tc_install\OPS"
   $hash = Init
   #$script:ErrorActionPreference = "Stop"
@@ -162,14 +161,15 @@ function UnInstall(){
   $packageAddress = "http://vmteambuildserver/repository/download/$btnum/$buildId"+":id/$package.{build.number}.zip?guest=1";
   $current_path = resolve-path "."
   $packageRoot += "$current_path\$package"
-#  (new-object net.webclient).DownloadFile($packageAddress,"$current_path\$package.$buildNum.zip")
+  Write-Host "Downloading $package.$buildNum.zip"
+  (new-object net.webclient).DownloadFile($packageAddress,"$current_path\$package.$buildNum.zip")
   
-#  UnInstall
-#  ExtractPackage $package".$buildNum.zip" "$packageRoot"
+  UnInstall
+  ExtractPackage $package".$buildNum.zip" "$packageRoot"
   UpdateConfiguration
-#  Install
-#  Remove-Item $package".$buildNum.zip"
+  Install
+  Remove-Item $package".$buildNum.zip"
   Write-Output "Deploy Complete"
-#}catch{
-#  throw "Deployment Error";
-#}
+}catch{
+  throw "Deployment Error";
+}
