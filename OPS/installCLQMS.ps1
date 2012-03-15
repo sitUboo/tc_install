@@ -143,11 +143,18 @@ function UpdateConfiguration(){
 }
 
 function UnInstall(){
-    if(Get-Service CLQMS -ErrorAction SilentlyContinue) {
-        Invoke-Expression "sc.exe stop ""CLQMS"""
-        Invoke-Expression "sc.exe delete ""CLQMS"""
-        sleep 30
+  $iterator = 0
+  while (Get-Service CLQMS -ErrorAction SilentlyContinue | Where-Object {$_.status -ne "stopped"}) {
+    $iterator += 1
+    if($iterator > 4){
+      Write-Host "Failed to stop the CLQMS service $iterator times, giving up."
+      exit 0
     }
+    Write-Host "Stopping CLQMS"
+    Invoke-Expression "sc.exe stop ""CLQMS"""
+    sleep 30
+  }
+  Invoke-Expression "sc.exe delete ""CLQMS"""
 }
 
 try {
