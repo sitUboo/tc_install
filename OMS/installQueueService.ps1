@@ -152,10 +152,16 @@ function UpdateConfiguration($service,$service_dir){
 }
 
 function UnInstall($service,$path){
-  while (Get-Service $service -ErrorAction SilentlyContinue | Where-Object {$_.status -eq "running"}) {
+  $iterator = 0
+  while (Get-Service $service -ErrorAction SilentlyContinue | Where-Object {$_.status -ne "stopped"}) {
+    $iterator += 1
+    if($iterator > 4){
+      Write-Host "Failed to stop $service $iterator times, giving up."
+      exit 0
+    }
     Write-Host "Stopping `"$service`""
     Invoke-Expression "sc.exe stop `"$service`""
-    sleep 30
+    sleep 15
   }
   Write-Host "Uninstalling"
   $return = Invoke-Expression "installUtil.exe /u $path\Cardlytics.QueueService.exe"
