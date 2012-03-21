@@ -131,6 +131,40 @@ function getBankUIProjectId($str){
   return $bankuiProjects[$str];
 }
 
+function ConvertToMin{
+  $dirs = ('bac-crd','bac-dbt','bac-available','bac-earned','bac-expired','bac-pref')
+  $public_dir = "$packageRoot\public"
+
+  foreach ($dir in $dirs){
+    $wrk_dir = "$public_dir\$dir"
+    $min_file = get-childitem "$wrk_dir\*min*.js" -name
+    if(!$min_file){
+      Write-Host "Unable to find min file!!! FATAL ERROR"
+      exit -1
+    }
+    $counter = 0
+    $file = "$wrk_dir\index.html"
+    $outfile = "$wrk_dir\index_new.html"
+    get-content "$file" -encoding UTF8 | Foreach-Object {
+      if ($_ -match "../js/bac.cardlytics"){
+        if ($_ -match "preload"){
+          $_ | Out-File -append "$outfile" -encoding UTF8
+        }
+      # do nothing
+      }elseif ($_ -match "../$dir/$dir"){
+        $str = [regex]::Replace($_, "..\/$dir\/$dir.*.js'", "../$dir/$min_file'");
+        if($counter -lt 1){
+          $str | Out-File -append $outfile -encoding UTF8
+        }
+        $counter =+ 1
+      }else{
+        $_ | Out-File -append "$outfile" -encoding UTF8
+      }
+    }
+    move-item $outfile $file -force
+  }
+}
+
 try {
   Set-Location "C:\tc_install\OPS"
   #$script:ErrorActionPreference = "Stop"
@@ -150,6 +184,10 @@ try {
   Write-Host "Extracting $package.$buildNum.zip to $packageRoot"
   ExtractPackage $package".$buildNum.zip" "$packageRoot"
   Remove-Item $package".$buildNum.zip"
+  if($mode -ne "Release"){
+    Write-Output "Updating index.html to use min files..."
+    ConvertToMin
+  }
   Write-Output "Deploy Complete"
 }catch{
   throw "Deployment Error";
