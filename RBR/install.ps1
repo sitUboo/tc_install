@@ -1,11 +1,14 @@
 param 
 ( 
-  [parameter(Mandatory = $true)]
+	[parameter(Mandatory = $true)]
 	[string]
 	$project,
 	[parameter(Mandatory = $false)]
 	[string]
-	$configFile
+	$configFile,
+  [parameter(Mandatory = $true)]
+  [System.Management.Automation.PSCredential]
+  $appCred
 )
 
 $opsProjects = @{}
@@ -56,7 +59,7 @@ function InitProjects(){
   $baseurl = "http://vmteambuildserver";
   $url = "$baseurl/httpAuth/app/rest/projects/id:project2";
   $webclient = new-object system.net.webclient
-  $webclient.credentials = new-object system.net.networkcredential("sdeal", "Jannina1111")
+  $webclient.credentials = $appCred
   $result = [xml] $webclient.DownloadString($url)
   foreach ($buildType in ($result.project.buildTypes.buildType)){
     $opsProjects[$buildType.name] = $buildType.id
@@ -239,7 +242,7 @@ function DbBackup{
   Invoke-Expression "sqlcmd.exe -S $DatabaseServer -U $user -P $pass -d master -Q `"BACKUP DATABASE [$Database] to DISK =N'$file' WITH NAME = N'$name', NOSKIP, STATS = 10, NOFORMAT`""
 }
 
-Set-Location "C:\tc_install\RBR"
+Set-Location "E:\tc_install\RBR"
 $script:ErrorActionPreference = "Stop"
 $hash = Init
 $package = "RBR"

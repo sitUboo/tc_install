@@ -5,7 +5,10 @@ param
 	$project,
 	[parameter(Mandatory = $false)]
 	[string]
-	$configFile
+	$configFile,
+  [parameter(Mandatory = $true)]
+  [System.Management.Automation.PSCredential]
+  $appCred
 )
 
 $opsProjects = @{}
@@ -14,9 +17,11 @@ $clientProjects = @{}
 
 function ExtractPackage($package,$path){
     import-module Pscx
-    if(-not (Test-Path "$path")){ 
+    if(-not (Test-Path "$path")){
+        Write-Host "Creating directory $path"
         New-Item "$path" -type directory
     }
+    Write-Host "Extracting archive $package to $path"
     expand-archive $package "$path"
 }
 
@@ -55,7 +60,7 @@ function InitProjects(){
   $baseurl = "http://vmteambuildserver";
   $url = "$baseurl/httpAuth/app/rest/projects/id:project2";
   $webclient = new-object system.net.webclient
-  $webclient.credentials = new-object system.net.networkcredential("sdeal", "Jannina1111")
+  $webclient.credentials = $appCred
   $result = [xml] $webclient.DownloadString($url)
   foreach ($buildType in ($result.project.buildTypes.buildType)){
     $opsProjects[$buildType.name] = $buildType.id
@@ -121,21 +126,64 @@ function getClientProjectId($str){
   return $clientProjects[$str];
 }
 
-function CheckLogs {
-  $webclient = new-object system.net.webclient
-  $webclient.credentials = new-object system.net.networkcredential("sdeal", "Jannina1111")
-  $result = [Xml]($webclient.DownloadString("http://vmteambuildserver/httpAuth/app/rest/builds?locator=running:true"))
-  foreach ($build in ($result.builds.build)){
-    $buildno = $build.id
-    $log = $webclient.DownloadString("http://vmteambuildserver/httpAuth/downloadBuildLog.html?buildId=$buildno")
-    foreach ($line in ($log.split("`n"))){
-      if(($line -cmatch "Error:") -or ($line -cmatch "DotNetMethodException")){
-        Write-Host "##teamcity[message text='Error Detected: Marking deployment as failed.' errorDetails='line start $line line end' status='ERROR']";
-        exit -1;
-      }
+function Load-ApplicationData ($dataDirectory,$dbserver,$user,$pass){
+  Write-Output "Updating Application Data"
+  $tableHash = @{}
+  foreach ( $sqlfile in (Get-ChildItem "$dataDirectory\*.*.sql")){
+    $sqlfile -match ('([A-Za-z]*).([A-Za-z]*)_Data.sql')
+    $schema= $matches[1]
+    $table = $matches[2]
+    if($table -eq ""){
+      Write-Host "Unable to extract table name... fatal error."
+      exit -1;
+    }
+    $tableHash[$table] = "$schema.$table"
+  }
+  $cmdText = "SELECT KCU1.* FROM INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS RC JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE KCU1 ON KCU1.CONSTRAINT_CATALOG = RC.CONSTRAINT_CATALOG AND KCU1.CONSTRAINT_SCHEMA = RC.CONSTRAINT_SCHEMA AND KCU1.CONSTRAINT_NAME = RC.CONSTRAINT_NAME JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE KCU2 ON KCU2.CONSTRAINT_CATALOG = RC.UNIQUE_CONSTRAINT_CATALOG AND KCU2.CONSTRAINT_SCHEMA = RC.UNIQUE_CONSTRAINT_SCHEMA AND KCU2.CONSTRAINT_NAME = RC.UNIQUE_CONSTRAINT_NAME AND KCU2.ORDINAL_POSITION = KCU1.ORDINAL_POSITION where KCU2.TABLE_NAME in ('" + [String]::join("','",$tables) + "');"
+  
+  $conn = New-Object System.Data.SqlClient.SqlConnection
+  $conn.ConnectionString = "Data Source=$dbinstance;Database=$db;User ID=$user;Password=$pass"
+  $conn.Open()
+  $cmd = New-Object System.Data.SqlClient.SqlCommand($cmdText,$conn)
+  $rdr = $cmd.ExecuteReader()
+  $disableConstraints = @()
+  $enableConstraints = @()
+  while($rdr.Read())
+  {
+    $constraint = $rdr['CONSTRAINT_NAME'].ToString()
+    $table = $rdr['TABLE_NAME'].ToString()
+    $disableConstraints += "ALTER TABLE " + $tableHash[$table] + " NOCHECK CONSTRAINT $constraint;"
+    $enableConstraints += "ALTER TABLE " + $tableHash[$table] + " CHECK CONSTRAINT $constraint;"
+  }
+  $conn.Close()
+  
+  $conn.Open()
+  Write-Host "Disabling constraints"
+  foreach ($cmdText in $disableConstraints){
+    Write-Host $cmdText
+    $cmd = New-Object System.Data.SqlClient.SqlCommand($cmdText,$conn)
+    $result = $cmd.ExecuteNonQuery()
+  }
+  foreach ($table in $tableHash.keys){
+    Write-Host "Deleting data from $table..."
+    $cmdText = "DELETE FROM " + $tableHash[$table] + ";"
+    $cmd = New-Object System.Data.SqlClient.SqlCommand($cmdText,$conn)
+    $cmd.ExecuteNonQuery()
+  }
+  foreach ( $sqlfile in (Get-ChildItem "$dataDirectory\*.*.sql")){
+    foreach ($line in (Get-Content "$sqlfile")){
+      Write-Host "Running $line"
+      $cmd = New-Object System.Data.SqlClient.SqlCommand($line,$conn)
+      $result = $cmd.ExecuteNonQuery()
     }
   }
-  Write-Host "##teamcity[message text='Completed Log Check' status='INFO']";
+  Write-Host "Enabling constraints"
+  foreach ($cmdText in $enableConstraints){
+    Write-Host $cmdText
+    $cmd = New-Object System.Data.SqlClient.SqlCommand($cmdText,$conn)
+    $result = $cmd.ExecuteNonQuery()
+  }
+  $conn.Close()
 }
 
 Set-Location "C:\tc_install\OMS"
@@ -148,15 +196,27 @@ $buildId = getBuildId $btnum $hash['pinned']
 $packageAddress = "http://vmteambuildserver/repository/download/$btnum/$buildId"+":id/$package.{build.number}.nupkg?guest=1";
 $current_path = resolve-path "."
 $packageRoot += "$current_path\$package\content"
-(new-object net.webclient).DownloadFile($packageAddress,"$current_path\$package`_$buildNum.zip")
-Write-Host "Downloading $package`_$buildNum.zip"
 
+if(-not (Test-Path "$current_path\$package`_$buildNum.zip")){
+  Write-Host "Downloading $package`_$buildNum.zip"
+  (new-object net.webclient).DownloadFile($packageAddress,"$current_path\$package`_$buildNum.zip")
+}
+
+if(Test-Path "$current_path\$package"){ 
+  Remove-Item "$current_path\$package" -recurse
+}
 ExtractPackage $package"_$buildNum.zip" "$current_path\$package"
+
 $dbinstance = $hash['oms.db.instance']
 $db = $hash['oms.db']
 $user = $hash['oms.db.username']
 $pass = $hash['oms.db.password']
-$output = Invoke-Expression "$package\tools\SqlCompare\SQLCompare.exe /Scripts1:""$package\content"" /server2:$dbinstance /db2:$db /username2:$user /password2:$pass /sync /Include:identical /Force /Verbose /ScriptFile:$package\SchemaSyncScript.sql"
+
+Load-ApplicationData "$package\content\Data" $dbinstance $user $pass
+
+$output = Invoke-Expression "$package\tools\SqlCompare\SQLCompare.exe /Options:IgnoreDatabaseAndServerName /Scripts1:""$package\content"" /server2:$dbinstance /db2:$db /username2:$user /password2:$pass /sync /Include:identical /Force /Verbose /ScriptFile:$package\SchemaSyncScript.sql"
 Write-Output $output
+
 Remove-Item $package"_$buildNum.zip"
+
 exit $LASTEXITCODE

@@ -1,11 +1,14 @@
 param 
 ( 
-  [parameter(Mandatory = $true)]
+	[parameter(Mandatory = $true)]
 	[string]
 	$project,
 	[parameter(Mandatory = $false)]
 	[string]
-	$configFile
+	$configFile,
+  [parameter(Mandatory = $true)]
+  [System.Management.Automation.PSCredential]
+  $appCred
 )
 
 $opsProjects = @{}
@@ -55,7 +58,7 @@ function InitProjects(){
   $baseurl = "http://vmteambuildserver";
   $url = "$baseurl/httpAuth/app/rest/projects/id:project2";
   $webclient = new-object system.net.webclient
-  $webclient.credentials = new-object system.net.networkcredential("sdeal", "Jannina1111")
+  $webclient.credentials = $appCred
   $result = [xml] $webclient.DownloadString($url)
   foreach ($buildType in ($result.project.buildTypes.buildType)){
     $opsProjects[$buildType.name] = $buildType.id
@@ -143,18 +146,11 @@ function UpdateConfiguration(){
 }
 
 function UnInstall(){
-  $iterator = 0
-  while (Get-Service CLQMS -ErrorAction SilentlyContinue | Where-Object {$_.status -ne "stopped"}) {
-    $iterator += 1
-    if($iterator > 4){
-      Write-Host "Failed to stop the CLQMS service $iterator times, giving up."
-      exit 0
+    if(Get-Service CLQMS -ErrorAction SilentlyContinue) {
+        Invoke-Expression "sc.exe stop ""CLQMS"""
+        Invoke-Expression "sc.exe delete ""CLQMS"""
+        sleep 30
     }
-    Write-Host "Stopping CLQMS"
-    Invoke-Expression "sc.exe stop ""CLQMS"""
-    sleep 30
-  }
-  Invoke-Expression "sc.exe delete ""CLQMS"""
 }
 
 try {
@@ -168,7 +164,6 @@ try {
   $packageAddress = "http://vmteambuildserver/repository/download/$btnum/$buildId"+":id/$package.{build.number}.zip?guest=1";
   $current_path = resolve-path "."
   $packageRoot += "$current_path\$package"
-  Write-Host "Downloading $package.$buildNum.zip"
   (new-object net.webclient).DownloadFile($packageAddress,"$current_path\$package.$buildNum.zip")
   
   UnInstall

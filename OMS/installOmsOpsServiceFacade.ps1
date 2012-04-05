@@ -5,7 +5,10 @@ param
 	$project,
 	[parameter(Mandatory = $false)]
 	[string]
-	$configFile
+	$configFile,
+  [parameter(Mandatory = $true)]
+  [System.Management.Automation.PSCredential]
+  $appCred
 )
 
 $opsProjects = @{}
@@ -55,7 +58,7 @@ function InitProjects(){
   $baseurl = "http://vmteambuildserver";
   $url = "$baseurl/httpAuth/app/rest/projects/id:project2";
   $webclient = new-object system.net.webclient
-  $webclient.credentials = new-object system.net.networkcredential("sdeal", "Jannina1111")
+  $webclient.credentials = $appCred
   $result = [xml] $webclient.DownloadString($url)
   foreach ($buildType in ($result.project.buildTypes.buildType)){
     $opsProjects[$buildType.name] = $buildType.id
@@ -159,7 +162,7 @@ function UnInstall() {
         Remove-WebSite -Name $obj.name
         Write-Host "Removing Site Files"
         if(Test-Path ($obj.physicalPath)){
-          get-childitem $obj.physicalPath -include *.* -recurse | remove-item -force -exclude "*.svclog"
+         # get-childitem $obj.physicalPath -include *.* -recurse | remove-item -force -exclude "*.svclog"
           #Remove-Item $obj.physicalPath -recurse -force -exclude ClingTrace.svclog
         }
     }
